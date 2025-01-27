@@ -3,7 +3,7 @@ import { Welcome } from '../components/Welcome/Welcome';
 
 // Funktion, um Daten von der API zu laden (Server Component)
 async function getUsers() {
-  const res = await fetch('http://localhost:3000/api/database', {
+  const res = await fetch('http://localhost:3000/api/getUsers', {
     cache: 'no-store', // Kein Caching, da wir aktuelle Daten möchten
   });
 
