@@ -5,8 +5,8 @@ import { ColorSchemeScript, mantineHtmlProps, MantineProvider } from '@mantine/c
 import { theme } from '../theme';
 
 export const metadata = {
-  title: 'Mantine Next.js template',
-  description: 'I am using Mantine with Next.js!',
+  title: 'Expirydate',
+  description: 'Keep track of the expirydate of your consumption items',
 };
 
 export default function RootLayout({ children }: { children: any }) {
