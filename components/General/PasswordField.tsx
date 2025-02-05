@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { IconEyeCheck, IconEyeOff, IconLock } from '@tabler/icons-react';
 import { Box, PasswordInput, Popover, Progress, Text } from '@mantine/core';
-import { useRegisterFormContext } from '@/app/lib/form-context';
 
 function PasswordRequirement({ meets, label }: { meets: boolean; label: string }) {
   return (
@@ -43,7 +42,6 @@ const VisibilityToggleIcon = ({ reveal }: { reveal: boolean }) =>
   );
 
 export function PasswordField() {
-  const form = useRegisterFormContext();
   const [popoverOpened, setPopoverOpened] = useState(false);
   const [value, setValue] = useState('');
 
