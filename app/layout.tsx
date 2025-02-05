@@ -5,8 +5,8 @@ import { ColorSchemeScript, mantineHtmlProps, MantineProvider } from '@mantine/c
 import { theme } from '../theme';
 
 export const metadata = {
-  title: 'Expirydate',
-  description: 'Keep track of the expirydate of your consumption items',
+  title: 'TrackShelf',
+  description: 'Keep track of the expirydate of your items',
 };
 
 export default function RootLayout({ children }: { children: any }) {

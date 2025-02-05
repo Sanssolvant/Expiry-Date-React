@@ -21,12 +21,7 @@ export function LoginForm() {
       <Paper className={classes.form} radius={0} p={30}>
         <Title order={2} className={classes.title} ta="center" mt="md" mb={50}>
           Welcome back to{' '}
-          <Text
-            inherit
-            variant="gradient"
-            component="span"
-            gradient={{ from: 'blue', to: 'lightblue' }}
-          >
+          <Text inherit variant="gradient" component="span" gradient={{ from: 'blue', to: 'cyan' }}>
             TrackShelf
           </Text>{' '}
           !
