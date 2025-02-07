@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { IconAbacus, IconArrowBack, IconSend } from '@tabler/icons-react';
 import {
   AppShell,
   Box,
@@ -15,6 +16,7 @@ import {
 } from '@mantine/core';
 import { hasLength, isEmail } from '@mantine/form';
 import { RegisterFormProvider, useRegisterForm } from '@/app/lib/form-context';
+import { ColorSchemeToggle } from '../ColorSchemeToggle/ColorSchemeToggle';
 import { EmailField } from '../General/EmailField';
 import { PasswordConfirmField } from '../General/PasswordConfirmField';
 import { PasswordField } from '../General/PasswordField';
@@ -45,25 +47,20 @@ export function RegisterForm() {
   return (
     <AppShell header={{ height: 60 }}>
       <AppShell.Header>
-        <Flex
-          direction="column"
-          justify="center"
-          ml={50}
-          style={{
-            height: '100%',
-          }}
-        >
-          <Title order={1} className={classes.title}>
-            <Text
-              inherit
-              variant="gradient"
-              component="span"
-              gradient={{ from: 'blue', to: 'cyan' }}
-            >
-              TrackShelf
-            </Text>
-          </Title>
-        </Flex>
+        <Container fluid p={0} style={{ height: '100%', alignContent: 'center' }}>
+          <Flex align="center" justify="space-between" pl={50}>
+            <Flex align="center">
+              <IconAbacus size={40} strokeWidth={1.5} />
+              <Title order={1} ml={3}>
+                <Text inherit variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
+                  TrackShelf
+                </Text>
+              </Title>
+            </Flex>
+
+            <ColorSchemeToggle />
+          </Flex>
+        </Container>
       </AppShell.Header>
 
       <Flex
@@ -71,7 +68,7 @@ export function RegisterForm() {
         justify="center" // Horizontale Zentrierung
         align="center" // Vertikale Zentrierung
       >
-        <Container size={400}>
+        <Container size={500}>
           <Paper shadow="md" p="xl" radius="md" withBorder style={{ minWidth: 300 }}>
             <RegisterFormProvider form={form}>
               <form onSubmit={form.onSubmit((values) => console.warn(values))}>
@@ -96,17 +93,13 @@ export function RegisterForm() {
                 </Box>
                 <Group justify="center" mt="md">
                   <Button
-                    variant="gradient"
+                    leftSection={<IconArrowBack size={14} />}
+                    variant="light"
                     onClick={() => router.push('/')}
-                    gradient={{ from: 'indigo', to: 'cyan', deg: 270 }}
                   >
                     Zurück
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="gradient"
-                    gradient={{ from: 'indigo', to: 'cyan', deg: 90 }}
-                  >
+                  <Button rightSection={<IconSend size={14} />} variant="light" type="submit">
                     Senden
                   </Button>
                 </Group>
