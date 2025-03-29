@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { IconEyeCheck, IconEyeOff, IconLock } from '@tabler/icons-react';
+import React, { useEffect, useState } from 'react';
+import { IconLock } from '@tabler/icons-react';
 import { Box, PasswordInput, Popover, Progress, Text } from '@mantine/core';
+import VisibilityIconToggle from '../../Toggles/VisibilityIconToggle';
 
 function PasswordRequirement({ meets, label }: { meets: boolean; label: string }) {
   return (
     <Text
-      c={meets ? 'teal' : 'red'}
-      style={{ display: 'flex', alignItems: 'center' }}
+      style={{ display: 'flex', alignItems: 'center', color: meets ? 'teal' : 'red' }}
       mt={7}
       size="sm"
     >
@@ -16,10 +16,10 @@ function PasswordRequirement({ meets, label }: { meets: boolean; label: string }
 }
 
 const requirements = [
-  { re: /[0-9]/, label: 'Includes number' },
-  { re: /[a-z]/, label: 'Includes lowercase letter' },
-  { re: /[A-Z]/, label: 'Includes uppercase letter' },
-  { re: /[$&+,:;=?@#|'<>.^*()%!-]/, label: 'Includes special symbol' },
+  { re: /[0-9]/, label: 'Enthält Nummern' },
+  { re: /[a-z]/, label: 'Enthält kleine Buchstaben' },
+  { re: /[A-Z]/, label: 'Enthält grosse Buchstaben' },
+  { re: /[$&+,:;=?@#|'<>.^*()%!-]/, label: 'Enthält spezielle Zeichen' },
 ];
 
 function getStrength(password: string) {
@@ -34,14 +34,7 @@ function getStrength(password: string) {
   return Math.max(100 - (100 / (requirements.length + 1)) * multiplier, 10);
 }
 
-const VisibilityToggleIcon = ({ reveal }: { reveal: boolean }) =>
-  reveal ? (
-    <IconEyeOff style={{ width: 'var(--psi-icon-size)', height: 'var(--psi-icon-size)' }} />
-  ) : (
-    <IconEyeCheck style={{ width: 'var(--psi-icon-size)', height: 'var(--psi-icon-size)' }} />
-  );
-
-export function PasswordField() {
+export const PasswordField = ({ form }: { form: any }) => {
   const [popoverOpened, setPopoverOpened] = useState(false);
   const [value, setValue] = useState('');
 
@@ -51,6 +44,18 @@ export function PasswordField() {
   const checks = requirements.map((requirement, index) => (
     <PasswordRequirement key={index} label={requirement.label} meets={requirement.re.test(value)} />
   ));
+
+  const handlePasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = event.currentTarget.value;
+    setValue(newPassword);
+    form.setFieldValue('password', newPassword); // Aktualisiere den Wert im Formular
+  };
+
+  useEffect(() => {
+    if (!value) {
+      setPopoverOpened(false);
+    }
+  }, [value]);
 
   return (
     <Popover
@@ -66,20 +71,22 @@ export function PasswordField() {
         >
           <PasswordInput
             label="Passwort"
+            autoComplete="true"
             withAsterisk
             placeholder="Dein Passwort"
-            visibilityToggleIcon={VisibilityToggleIcon}
+            visibilityToggleIcon={VisibilityIconToggle}
             leftSection={<IconLock size={18} />}
             value={value}
-            onChange={(event) => setValue(event.currentTarget.value)}
+            error={form.errors.password}
+            onChange={handlePasswordChange} // Setze den Passwortwert im Formular
           />
         </div>
       </Popover.Target>
       <Popover.Dropdown>
         <Progress color={color} value={strength} size={5} mb="xs" />
-        <PasswordRequirement label="Includes at least 8 characters" meets={value.length > 7} />
+        <PasswordRequirement label="Enthält mindestens 8 Zeichen" meets={value.length > 7} />
         {checks}
       </Popover.Dropdown>
     </Popover>
   );
-}
+};
