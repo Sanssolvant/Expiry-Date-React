@@ -131,4 +131,4 @@ dist
 
 .DS_Store
 
-.sql
+trackShelf_DB.sql
