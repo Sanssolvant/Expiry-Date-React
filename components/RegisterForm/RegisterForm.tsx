@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { IconArrowBack, IconSend } from '@tabler/icons-react';
 import { AppShell, Box, Button, Container, Flex, Group, Paper, Text, Title } from '@mantine/core';
 import { hasLength, isEmail, matches, useForm } from '@mantine/form';
+import { authClient } from '@/app/lib/auth-client';
+import { NotificationElementError } from '../General/NotificationElementError';
 import { EmailField } from '../General/Register/EmailField';
 import { PasswordConfirmField } from '../General/Register/PasswordConfirmField';
 import { PasswordField } from '../General/Register/PasswordField';
@@ -15,7 +17,9 @@ export function RegisterForm() {
   const router = useRouter();
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  const [error, setError] = useState('');
+  const searchParams = useSearchParams(); // Zugriff auf die Query-Parameter
+  const success = searchParams.get('success'); // Hole den `success`-Query-Parameter // Abfrage des `success`-Parameters aus der URL
+  const [loading, setLoading] = useState(false);
 
   const form = useForm({
     initialValues: {
@@ -45,31 +49,31 @@ export function RegisterForm() {
       return;
     }
 
-    try {
-      // Sicherer Call zur API
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    await authClient.signUp.email(
+      {
+        email: form.values.email,
+        password: form.values.password,
+        name: form.values.username,
+      },
+      {
+        onRequest: () => {
+          setLoading(true);
         },
-        body: JSON.stringify(form.values),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        router.push('/?success=true');
-      } else {
-        setError(data.error); // Fehler beim Einfügen in die DB
+        onSuccess: () => {
+          router.push('/?success=true');
+        },
+        onError: () => {
+          setLoading(false);
+          router.push('/register?success=false');
+        },
       }
-    } catch (error) {
-      setError('Ein Fehler ist aufgetreten.');
-    }
+    );
   };
 
   return (
     <AppShell header={{ height: '4.5rem' }}>
       <AppShell.Header>
+        {success === 'false' && <NotificationElementError />}
         <Container fluid p={0} style={{ height: '100%', alignContent: 'center' }}>
           <Flex align="center" justify="space-between">
             <Title order={1} ml="1.5rem">
@@ -106,7 +110,6 @@ export function RegisterForm() {
                   setConfirmPasswordError={setConfirmPasswordError}
                 />
               </Box>
-              {error && <p style={{ color: 'red' }}>{error}</p>}
               <Group justify="center" mt="md">
                 <Button
                   leftSection={<IconArrowBack size={14} />}
@@ -115,7 +118,12 @@ export function RegisterForm() {
                 >
                   Zurück
                 </Button>
-                <Button rightSection={<IconSend size={14} />} variant="light" type="submit">
+                <Button
+                  loading={loading}
+                  rightSection={<IconSend size={14} />}
+                  variant="light"
+                  type="submit"
+                >
                   Senden
                 </Button>
               </Group>

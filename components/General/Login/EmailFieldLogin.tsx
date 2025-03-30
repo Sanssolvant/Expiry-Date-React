@@ -1,18 +1,18 @@
 import React from 'react';
 import { TextInput } from '@mantine/core';
 
-export const UsernameFieldLogin = ({ form }: { form: any }) => {
+export const EmailFieldLogin = ({ form }: { form: any }) => {
   return (
     <>
       <TextInput
         mt="md"
         size="md"
-        label="Benutzername"
-        placeholder="Dein Benutzername"
+        label="E-Mail"
         autoComplete="true"
+        placeholder="Deine E-Mail-Adresse"
         withAsterisk
-        {...form.getInputProps('username')}
-        error={form.errors.username}
+        {...form.getInputProps('email')}
+        error={form.errors.email}
         required
       />
     </>

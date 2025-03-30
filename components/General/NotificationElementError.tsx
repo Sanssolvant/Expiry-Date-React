@@ -1,17 +1,17 @@
-import { IconCheck } from '@tabler/icons-react';
+import { IconX } from '@tabler/icons-react';
 import { Notification } from '@mantine/core';
 
-export function NotificationElement() {
+export function NotificationElementError() {
   return (
     <Notification
-      icon={<IconCheck size={20} />}
+      icon={<IconX size={20} />}
       m={0}
       p="1rem"
-      color="teal"
+      color="red"
       style={{ zIndex: 10, width: '100%', borderRadius: 0 }}
       withCloseButton={false}
     >
-      Erfolgreich registriert!
+      Es ist ein Fehler aufgetreten.
     </Notification>
   );
 }

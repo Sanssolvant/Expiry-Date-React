@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Anchor, Button, Paper, Text, Title } from '@mantine/core';
-import { hasLength, matches, useForm } from '@mantine/form';
+import { isEmail, useForm } from '@mantine/form';
+import { authClient } from '@/app/lib/auth-client';
 import { CheckboxLogin } from '../General/Login/CheckboxLogin';
+import { EmailFieldLogin } from '../General/Login/EmailFieldLogin';
 import { PasswordFieldLogin } from '../General/Login/PasswordFieldLogin';
-import { UsernameFieldLogin } from '../General/Login/UsernameFieldLogin';
-import { NotificationElement } from '../General/NotificationElement';
+import { NotificationElementError } from '../General/NotificationElementError';
+import { NotificationElementSuccess } from '../General/NotificationElementSuccess';
 import { ColorSchemeToggle } from '../Toggles/ColorSchemeToggle';
 import classes from './loginform.module.css';
 
@@ -14,19 +17,16 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams(); // Zugriff auf die Query-Parameter
   const success = searchParams.get('success'); // Hole den `success`-Query-Parameter // Abfrage des `success`-Parameters aus der URL
+  const [loading, setLoading] = useState(false);
 
   const form = useForm({
     initialValues: {
-      username: '',
+      email: '',
       password: '',
-      checkbox: '',
+      checkbox: false,
     },
     validate: {
-      username: hasLength({ min: 2, max: 10 }, 'Ungültiger Benutzername (2-10 Zeichen)'),
-      password: matches(
-        /^(?=(.*[0-9]))(?=(.*[a-z]))(?=(.*[A-Z]))(?=(.*[$&+,:;=?@#|'<>.^*()%!-]))[A-Za-z0-9$&+,:;=?@#|'<>.^*()%!-]{8,}$/,
-        'Ungültiges Passwort'
-      ),
+      email: isEmail('Ungültige E-Mail-Adresse'),
     },
   });
 
@@ -35,34 +35,37 @@ export function LoginForm() {
 
     if (form.validate().hasErrors) {
       console.error('Formular enthält Fehler');
-      return;
     }
 
-    try {
-      // Sicherer Call zur API
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    await authClient.signIn.email(
+      {
+        email: form.values.email,
+        password: form.values.password,
+        /**
+         * remember the user session after the browser is closed.
+         * @default true
+         */
+        rememberMe: form.values.checkbox,
+      },
+      {
+        onRequest: () => {
+          setLoading(true);
         },
-        body: JSON.stringify(form.values),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        router.push('/?success=true');
-      } else {
-        console.error(data.error); // Fehler beim Einfügen in die DB
+        onSuccess: () => {
+          router.push('/dashboard');
+        },
+        onError: () => {
+          setLoading(false);
+          router.push('/?success=false');
+        },
       }
-    } catch (error) {
-      console.error('Ein Fehler ist aufgetreten.');
-    }
+    );
   };
 
   return (
     <div className={classes.wrapper}>
-      {success === 'true' && <NotificationElement />}
+      {success === 'true' && <NotificationElementSuccess />}
+      {success === 'false' && <NotificationElementError />}
       <ColorSchemeToggle />
       <Paper className={classes.form} radius={0} p={30}>
         <Title order={2} className={classes.title} ta="center" mt="md" mb={50}>
@@ -73,10 +76,10 @@ export function LoginForm() {
           !
         </Title>
         <form onSubmit={handleSubmit}>
-          <UsernameFieldLogin form={form} />
+          <EmailFieldLogin form={form} />
           <PasswordFieldLogin form={form} />
           <CheckboxLogin form={form} />
-          <Button fullWidth mt="xl" size="md" type="submit">
+          <Button loading={loading} fullWidth mt="xl" size="md" type="submit">
             Anmelden
           </Button>
         </form>

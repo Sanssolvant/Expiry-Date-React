@@ -13,6 +13,7 @@ export const PasswordFieldLogin = ({ form }: { form: any }) => {
       placeholder="Dein Passwort"
       visibilityToggleIcon={VisibilityIconToggle}
       leftSection={<IconLock size={18} />}
+      {...form.getInputProps('password')}
       error={form.errors.password}
     />
   );

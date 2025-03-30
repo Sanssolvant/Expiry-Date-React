@@ -20,6 +20,7 @@
     "storybook:build": "storybook build"
   },
   "dependencies": {
+    "@better-auth/cli": "1.2.5",
     "@mantine/carousel": "^7.16.2",
     "@mantine/charts": "^7.16.2",
     "@mantine/code-highlight": "^7.16.2",
@@ -40,6 +41,7 @@
     "@tiptap/react": "^2.11.3",
     "@tiptap/starter-kit": "^2.11.3",
     "bcrypt": "^5.1.1",
+    "better-auth": "^1.2.5",
     "dayjs": "^1.11.13",
     "embla-carousel-react": "^7.1.0",
     "mysql2": "^3.12.0",
@@ -64,6 +66,7 @@
     "@types/node": "^22.10.7",
     "@types/react": "19.0.7",
     "babel-loader": "^9.2.1",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.18.0",
     "eslint-config-mantine": "^4.0.3",
     "eslint-plugin-jsx-a11y": "^6.10.2",

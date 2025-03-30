@@ -5,6 +5,7 @@ export const UsernameField = ({ form }: { form: any }) => {
   return (
     <>
       <TextInput
+        maxLength={15}
         label="Benutzername"
         placeholder="Dein Benutzername"
         autoComplete="true"
