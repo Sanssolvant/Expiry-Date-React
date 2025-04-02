@@ -9,7 +9,7 @@ export function ColorSchemeToggle() {
   const dark = colorScheme === 'dark';
 
   return (
-    <Group style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 10 }}>
+    <Group style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', zIndex: 10 }}>
       <Switch
         checked={colorScheme === 'dark'}
         onClick={() => toggleColorScheme()}

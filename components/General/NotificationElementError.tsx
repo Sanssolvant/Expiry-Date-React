@@ -1,7 +1,7 @@
 import { IconX } from '@tabler/icons-react';
 import { Notification } from '@mantine/core';
 
-export function NotificationElementError() {
+export const NotificationElementError = ({ text }: { text: string }) => {
   return (
     <Notification
       icon={<IconX size={20} />}
@@ -11,7 +11,7 @@ export function NotificationElementError() {
       style={{ zIndex: 10, width: '100%', borderRadius: 0 }}
       withCloseButton={false}
     >
-      Es ist ein Fehler aufgetreten.
+      {text}
     </Notification>
   );
-}
+};

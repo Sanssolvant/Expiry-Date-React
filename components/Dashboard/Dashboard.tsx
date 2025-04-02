@@ -1,9 +1,10 @@
 'use client';
 
-import { AppShell, Burger, Group, Skeleton, Text, Title } from '@mantine/core';
+import { AppShell, Burger, Group, Skeleton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { SignOutButton } from '../General/Dashboard/SignOutButton';
-import { ColorSchemeToggle } from '../Toggles/ColorSchemeToggle';
+import { Logo } from '../General/Logo';
+import { ColorSchemeToggle } from '../General/Toggles/ColorSchemeToggle';
 
 export function Dashboard() {
   const [opened, { toggle }] = useDisclosure();
@@ -18,16 +19,11 @@ export function Dashboard() {
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md">
+        <Group h="100%" px="md" justify="space-between">
           <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-          <Title order={1} ml="1.5rem">
-            <Text inherit variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-              TrackShelf
-            </Text>
-          </Title>
+          <Logo />
           <SignOutButton />
         </Group>
-        <ColorSchemeToggle />
       </AppShell.Header>
       <AppShell.Navbar p="md">
         Navbar
@@ -37,7 +33,10 @@ export function Dashboard() {
             <Skeleton key={index} h={28} mt="sm" animate={false} />
           ))}
       </AppShell.Navbar>
-      <AppShell.Main>Main</AppShell.Main>
+      <AppShell.Main>
+        <ColorSchemeToggle />
+        Main
+      </AppShell.Main>
     </AppShell>
   );
 }

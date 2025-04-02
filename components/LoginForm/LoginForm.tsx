@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Anchor, Button, Paper, Text, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
@@ -10,14 +10,16 @@ import { EmailFieldLogin } from '../General/Login/EmailFieldLogin';
 import { PasswordFieldLogin } from '../General/Login/PasswordFieldLogin';
 import { NotificationElementError } from '../General/NotificationElementError';
 import { NotificationElementSuccess } from '../General/NotificationElementSuccess';
-import { ColorSchemeToggle } from '../Toggles/ColorSchemeToggle';
+import { ColorSchemeToggle } from '../General/Toggles/ColorSchemeToggle';
 import classes from './loginform.module.css';
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams(); // Zugriff auf die Query-Parameter
-  const success = searchParams.get('success'); // Hole den `success`-Query-Parameter // Abfrage des `success`-Parameters aus der URL
+  const success = searchParams.get('success');
+  const reset = searchParams.get('reset'); // Hole den `success`-Query-Parameter // Abfrage des `success`-Parameters aus der URL
   const [loading, setLoading] = useState(false);
+  const [text, setText] = useState('');
 
   const form = useForm({
     initialValues: {
@@ -29,6 +31,16 @@ export function LoginForm() {
       email: isEmail('Ungültige E-Mail-Adresse'),
     },
   });
+
+  useEffect(() => {
+    if (success === 'true' && reset === 'true') {
+      setText('Passwort erfolgreich geändert');
+    } else if (success !== 'false') {
+      setText(
+        'Erfolgreich registriert! Bitte verifiziere deine E-Mail, um dich anmelden zu können.'
+      );
+    }
+  }, [success, reset]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault(); // Verhindert das automatische Absenden des Formulars
@@ -54,9 +66,14 @@ export function LoginForm() {
         onSuccess: () => {
           router.push('/dashboard');
         },
-        onError: () => {
+        onError: (ctx) => {
           setLoading(false);
           router.push('/?success=false');
+          if (ctx.error.status === 403) {
+            setText('Email noch nicht verifiziert');
+          } else {
+            setText('Logindaten nicht korrekt');
+          }
         },
       }
     );
@@ -64,8 +81,8 @@ export function LoginForm() {
 
   return (
     <div className={classes.wrapper}>
-      {success === 'true' && <NotificationElementSuccess />}
-      {success === 'false' && <NotificationElementError />}
+      {success === 'true' && <NotificationElementSuccess text={text} />}
+      {success === 'false' && <NotificationElementError text={text} />}
       <ColorSchemeToggle />
       <Paper className={classes.form} radius={0} p={30}>
         <Title order={2} className={classes.title} ta="center" mt="md" mb={50}>
@@ -87,6 +104,11 @@ export function LoginForm() {
           Kein Account?{' '}
           <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/register')}>
             Registrieren
+          </Anchor>
+        </Text>
+        <Text ta="center" mt="sm">
+          <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/forgot-password')}>
+            Passwort vergessen?
           </Anchor>
         </Text>
       </Paper>

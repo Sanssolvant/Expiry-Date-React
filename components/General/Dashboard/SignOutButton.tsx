@@ -9,8 +9,9 @@ export function SignOutButton() {
   const router = useRouter();
   return (
     <Button
+      size="xs"
       leftSection={<IconArrowBack size={14} />}
-      variant="light"
+      variant="outline"
       onClick={() =>
         authClient.signOut({
           fetchOptions: {
