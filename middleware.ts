@@ -1,29 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie } from 'better-auth/cookies';
 
-const authRoutes = ['/register', '/'];
-const passwordRoutes = ['/reset-password', '/forgot-password'];
+const publicRoutes = ['/register', '/forgot-password', '/reset-password'];
 
 export async function middleware(request: NextRequest) {
   const pathName = request.nextUrl.pathname;
-  const isAuthRoute = authRoutes.includes(pathName);
-  const isPasswordRoute = passwordRoutes.includes(pathName);
-  const sessionCookie = getSessionCookie(request);
+  const session = getSessionCookie(request);
+  const isLoginPage = pathName === '/';
+  const isPublic = publicRoutes.includes(pathName);
 
-  if (!sessionCookie) {
-    if (isAuthRoute || isPasswordRoute) {
+  // 🚫 Nicht eingeloggt → nur Public & "/" erlaubt
+  if (!session) {
+    if (isLoginPage || isPublic) {
       return NextResponse.next();
     }
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if (isAuthRoute || isPasswordRoute) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // ✅ Eingeloggt → kein Zugang zu "/", register etc.
+  if (isLoginPage || isPublic) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard', '/((?!api|_next/static|_next/image|.*\\.png$).*)'], // Specify the routes the middleware applies to
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|css|js)$).*)'],
 };
