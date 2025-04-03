@@ -5,6 +5,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { SignOutButton } from '../General/Dashboard/SignOutButton';
 import { Logo } from '../General/Logo';
 import { ColorSchemeToggle } from '../General/Toggles/ColorSchemeToggle';
+import DndGrid from './DndGrid';
 
 export function Dashboard() {
   const [opened, { toggle }] = useDisclosure();
@@ -35,7 +36,7 @@ export function Dashboard() {
       </AppShell.Navbar>
       <AppShell.Main>
         <ColorSchemeToggle />
-        Main
+        <DndGrid />
       </AppShell.Main>
     </AppShell>
   );
