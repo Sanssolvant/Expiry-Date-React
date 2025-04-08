@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell, Box, Button, Container, Flex, Group, Paper, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
-import { Logo } from '../General/Logo';
-import { NotificationElementError } from '../General/NotificationElementError';
-import { NotificationElementSuccess } from '../General/NotificationElementSuccess';
-import { EmailField } from '../General/Register/EmailField';
-import { ColorSchemeToggle } from '../General/Toggles/ColorSchemeToggle';
+import { ColorSchemeToggle } from './General/ColorSchemeToggle';
+import { EmailField } from './General/EmailField';
+import { Logo } from './General/Logo';
+import { NotificationElementError } from './General/NotificationElementError';
+import { NotificationElementSuccess } from './General/NotificationElementSuccess';
 
 export function ForgotPasswordForm() {
   const router = useRouter();

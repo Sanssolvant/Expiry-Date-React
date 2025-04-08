@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { IconLock } from '@tabler/icons-react';
 import { Box, PasswordInput, Popover, Progress, Text } from '@mantine/core';
-import VisibilityIconToggle from '../Toggles/VisibilityIconToggle';
+import VisibilityIconToggle from './VisibilityIconToggle';
 
 function PasswordRequirement({ meets, label }: { meets: boolean; label: string }) {
   return (

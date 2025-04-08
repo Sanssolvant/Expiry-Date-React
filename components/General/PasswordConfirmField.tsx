@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconLock } from '@tabler/icons-react';
 import { PasswordInput } from '@mantine/core';
-import VisibilityIconToggle from '../Toggles/VisibilityIconToggle';
+import VisibilityIconToggle from './VisibilityIconToggle';
 
 export const PasswordConfirmField = ({
   confirmPassword,

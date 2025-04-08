@@ -5,12 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Anchor, Button, Paper, Text, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
-import { CheckboxLogin } from '../General/Login/CheckboxLogin';
-import { EmailFieldLogin } from '../General/Login/EmailFieldLogin';
-import { PasswordFieldLogin } from '../General/Login/PasswordFieldLogin';
-import { NotificationElementError } from '../General/NotificationElementError';
-import { NotificationElementSuccess } from '../General/NotificationElementSuccess';
-import { ColorSchemeToggle } from '../General/Toggles/ColorSchemeToggle';
+import { CheckboxLogin } from './General/CheckboxLogin';
+import { ColorSchemeToggle } from './General/ColorSchemeToggle';
+import { EmailFieldLogin } from './General/EmailFieldLogin';
+import { NotificationElementError } from './General/NotificationElementError';
+import { NotificationElementSuccess } from './General/NotificationElementSuccess';
+import { PasswordFieldLogin } from './General/PasswordFieldLogin';
 import classes from './loginform.module.css';
 
 export function LoginForm() {

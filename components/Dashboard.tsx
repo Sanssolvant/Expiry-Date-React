@@ -2,10 +2,10 @@
 
 import { AppShell, Burger, Group, Skeleton } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { SignOutButton } from '../General/Dashboard/SignOutButton';
-import { Logo } from '../General/Logo';
-import { ColorSchemeToggle } from '../General/Toggles/ColorSchemeToggle';
-import DndGrid from './DndGrid';
+import { ColorSchemeToggle } from './General/ColorSchemeToggle';
+import DndGrid from './General/DndGrid';
+import { Logo } from './General/Logo';
+import { SignOutButton } from './General/SignOutButton';
 
 export function Dashboard() {
   const [opened, { toggle }] = useDisclosure();
@@ -13,7 +13,7 @@ export function Dashboard() {
     <AppShell
       header={{ height: { base: 60, md: 70, lg: 80 } }}
       navbar={{
-        width: { base: 200, md: 300, lg: 400 },
+        width: { base: 100, md: 200, lg: 300 },
         breakpoint: 'sm',
         collapsed: { mobile: !opened },
       }}
@@ -28,14 +28,14 @@ export function Dashboard() {
       </AppShell.Header>
       <AppShell.Navbar p="md">
         Navbar
-        {Array(15)
+        {Array(10)
           .fill(0)
           .map((_, index) => (
             <Skeleton key={index} h={28} mt="sm" animate={false} />
           ))}
+        <ColorSchemeToggle />
       </AppShell.Navbar>
       <AppShell.Main>
-        <ColorSchemeToggle />
         <DndGrid />
       </AppShell.Main>
     </AppShell>

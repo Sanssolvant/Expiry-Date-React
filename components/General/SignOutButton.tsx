@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { IconArrowBack } from '@tabler/icons-react';
+import { IconLogout2 } from '@tabler/icons-react';
 import { Button } from '@mantine/core';
 import { authClient } from '@/app/lib/auth-client';
 
@@ -10,8 +10,8 @@ export function SignOutButton() {
   return (
     <Button
       size="xs"
-      leftSection={<IconArrowBack size={14} />}
-      variant="outline"
+      leftSection={<IconLogout2 size={14} />}
+      variant="filled"
       onClick={() =>
         authClient.signOut({
           fetchOptions: {

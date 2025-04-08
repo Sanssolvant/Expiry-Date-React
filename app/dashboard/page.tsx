@@ -1,9 +1,12 @@
-import { Dashboard } from '@/components/Dashboard/Dashboard';
+import { Suspense } from 'react';
+import { Dashboard } from '@/components/Dashboard';
 
 export default async function DashboardPage() {
   return (
     <>
-      <Dashboard />
+      <Suspense>
+        <Dashboard />
+      </Suspense>
     </>
   );
 }
