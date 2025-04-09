@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { IconCheck, IconX } from '@tabler/icons-react';
 import { motion } from 'framer-motion';
 import {
   Box,
@@ -21,9 +22,13 @@ import {
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
+import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { CardCreateModal } from './CardCreateModal';
+import { CardFilterMenu } from './CardFilterMenu';
 import { GridItem } from './GridItem';
+import { SettingsMenu } from './SettingsMenu';
 
 export type WarnLevel = 'ok' | 'bald' | 'abgelaufen';
 
@@ -36,7 +41,7 @@ export type CardData = {
   ablaufdatum: string;
   kategorie: string;
   erfasstAm: string;
-  warnLevel: WarnLevel;
+  warnLevel?: WarnLevel;
 };
 
 export default function DndGrid() {
@@ -44,12 +49,31 @@ export default function DndGrid() {
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
   const [loading, setLoading] = useState(false);
+  const [warnBaldAb, setWarnBaldAb] = useState(3);
+  const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(0);
+  const [rawCards, setRawCards] = useState<Omit<CardData, 'warnLevel'>[]>([]);
 
   const [mounted, setMounted] = useState(false);
-  const [cards, setCards] = useState<CardData[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [filters, setFilters] = useState({
+    name: '',
+    kategorie: '',
+    einheit: '',
+    warnLevel: '',
+    ablaufVon: null as Date | null,
+    ablaufBis: null as Date | null,
+    mengeVon: null,
+    mengeBis: null,
+  });
+
+  const cards = useMemo(() => {
+    return rawCards.map((card) => ({
+      ...card,
+      warnLevel: calculateWarnLevel(card.ablaufdatum, warnBaldAb, warnAbgelaufenAb),
+    }));
+  }, [rawCards, warnBaldAb, warnAbgelaufenAb]);
 
   useEffect(() => setMounted(true), []);
 
@@ -57,6 +81,7 @@ export default function DndGrid() {
     const loadCards = async () => {
       try {
         const res = await fetch('/api/load-products', { method: 'GET', credentials: 'include' });
+
         const data = await res.json();
 
         if (res.ok && data.produkte) {
@@ -69,10 +94,9 @@ export default function DndGrid() {
             erfasstAm: formatDateToDisplay(prod.erfasstAm),
             kategorie: prod.kategorie,
             image: prod.bildUrl || '',
-            warnLevel: prod.warnLevel,
           }));
 
-          setCards(cardsFromDB);
+          setRawCards(cardsFromDB);
         } else {
           console.warn('Ladefehler:', data?.error);
         }
@@ -84,6 +108,56 @@ export default function DndGrid() {
     loadCards();
   }, []);
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch('/api/user-settings', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (res.ok) {
+          const settings = await res.json();
+          if (settings.warnLevelBald != null) {
+            setWarnBaldAb(settings.warnLevelBald);
+          }
+          if (settings.warnLevelExpired != null) {
+            setWarnAbgelaufenAb(settings.warnLevelExpired);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Fehler beim Laden der Einstellungen:', error);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  const filteredCards = cards.filter((card) => {
+    const nameMatch = card.name.toLowerCase().includes(filters.name.toLowerCase());
+    const kategorieMatch = !filters.kategorie || card.kategorie === filters.kategorie;
+    const einheitMatch = !filters.einheit || card.einheit === filters.einheit;
+    const warnLevelMatch = !filters.warnLevel || card.warnLevel === filters.warnLevel;
+
+    const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
+    const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
+    const ablaufBisMatch = !filters.ablaufBis || ablaufDate <= filters.ablaufBis;
+
+    const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
+    const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;
+
+    return (
+      nameMatch &&
+      kategorieMatch &&
+      einheitMatch &&
+      warnLevelMatch &&
+      ablaufVonMatch &&
+      ablaufBisMatch &&
+      mengeVonMatch &&
+      mengeBisMatch
+    );
+  });
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) {
@@ -92,22 +166,23 @@ export default function DndGrid() {
     const oldIndex = cards.findIndex((c) => c.id === active.id);
     const newIndex = cards.findIndex((c) => c.id === over.id);
     if (oldIndex !== -1 && newIndex !== -1) {
-      setCards((prev) => arrayMove(prev, oldIndex, newIndex));
+      setRawCards((prev) => arrayMove(prev, oldIndex, newIndex));
     }
   };
 
   const handleCreateCard = (card: CardData) => {
-    const exists = cards.find((c) => c.id === card.id);
+    const { warnLevel, ...cardWithoutWarn } = card;
+    const exists = rawCards.find((c) => c.id === card.id);
     if (exists) {
-      setCards((prev) => prev.map((c) => (c.id === card.id ? card : c)));
+      setRawCards((prev) => prev.map((c) => (c.id === card.id ? card : c)));
     } else {
-      setCards((prev) => [...prev, card]);
+      setRawCards((prev) => [...prev, cardWithoutWarn]);
     }
     setEditingCard(null);
   };
 
   const handleDelete = (id: string) => {
-    setCards((prev) => prev.filter((card) => card.id !== id));
+    setRawCards((prev) => prev.filter((card) => card.id !== id));
   };
 
   const handleCardClick = (card: CardData) => {
@@ -121,22 +196,35 @@ export default function DndGrid() {
 
   const handleSave = async () => {
     setLoading(true);
+
+    const payload = cards.map(({ warnLevel, ...rest }) => rest);
+
     const res = await fetch('/api/save-products', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       credentials: 'include', // 🔐 Damit Session gesendet wird!
-      body: JSON.stringify({ cards }),
+      body: JSON.stringify({ cards: payload }),
     });
 
     if (res.ok) {
       const result = await res.json();
-      // console.error('Gespeichert:', result);
-      // Optional: Toast oder Erfolgsmeldung
+
+      notifications.show({
+        title: 'Gespeichert',
+        message: `${result.count ?? 'Alle'} Karten wurden erfolgreich gespeichert.`,
+        color: 'teal',
+        icon: <IconCheck size={18} />,
+      });
     } else {
       const error = await res.json();
-      // console.error('Fehler:', error);
+      notifications.show({
+        title: 'Fehler beim Speichern',
+        message: error?.error || 'Unbekannter Fehler beim Speichern',
+        color: 'red',
+        icon: <IconX size={18} />,
+      });
     }
 
     setLoading(false);
@@ -159,6 +247,13 @@ export default function DndGrid() {
         <Button onClick={handleSave} color="green" variant="outline" loading={loading}>
           Alle speichern
         </Button>
+        <CardFilterMenu filters={filters} setFilters={setFilters} />
+        <SettingsMenu
+          baldAb={warnBaldAb}
+          abgelaufenAb={warnAbgelaufenAb}
+          setBaldAb={setWarnBaldAb}
+          setAbgelaufenAb={setWarnAbgelaufenAb}
+        />
       </Group>
 
       <Box
@@ -171,11 +266,11 @@ export default function DndGrid() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={cards.map((c) => c.id)} strategy={rectSortingStrategy}>
             <SimpleGrid
-              cols={{ base: 3, sm: 4, md: 5 }}
+              cols={{ base: 3, sm: 4, md: 6 }}
               spacing={{ base: 10, sm: 20 }}
               verticalSpacing={{ base: 'md', sm: 'xl' }}
             >
-              {cards.map((card) => (
+              {filteredCards.map((card) => (
                 <SortableCard
                   key={card.id}
                   card={card}
@@ -236,7 +331,7 @@ function SortableCard({
         ablaufdatum={card.ablaufdatum}
         erfasstAm={card.erfasstAm}
         kategorie={card.kategorie}
-        warnLevel={card.warnLevel}
+        warnLevel={card.warnLevel ?? calculateWarnLevel(card.ablaufdatum)} // 🔥 Fallback
         isDragging={isDragging}
         onDelete={() => onDelete(card.id)}
       />

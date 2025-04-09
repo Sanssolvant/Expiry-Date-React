@@ -33,7 +33,7 @@
     "@mantine/form": "^7.16.2",
     "@mantine/hooks": "^7.16.2",
     "@mantine/modals": "^7.16.2",
-    "@mantine/notifications": "^7.16.2",
+    "@mantine/notifications": "^7.17.4",
     "@mantine/nprogress": "^7.16.2",
     "@mantine/spotlight": "^7.16.2",
     "@mantine/tiptap": "^7.16.2",
@@ -56,6 +56,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "recharts": "2",
+    "sharp": "^0.34.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

@@ -18,7 +18,7 @@ import { useForm } from '@mantine/form';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 
-import { IconCalendar, IconCategory, IconPhoto } from '@tabler/icons-react';
+import { IconCalendar, IconCategory, IconLabel, IconPhoto } from '@tabler/icons-react';
 import { formatDateToDisplay, parseDateFromString } from '@/app/lib/dateUtils';
 
 type CardData = {
@@ -30,7 +30,6 @@ type CardData = {
   ablaufdatum: string;
   erfasstAm: string;
   kategorie: string;
-  warnLevel: 'ok' | 'bald' | 'abgelaufen';
 };
 
 type Props = {
@@ -44,7 +43,7 @@ const kategorien = ['Obst', 'Gemüse', 'Milchprodukt', 'Tiefkühl', 'Konserve', 
 const einheiten = ['Stk', 'g', 'kg', 'ml', 'L', 'Packung'];
 
 export function CardCreateModal({ opened, onClose, onCreate, initialData }: Props) {
-  const [imageBase64, setImageBase64] = useState('');
+  const [file, setFile] = useState<File | null>(null);
 
   const form = useForm({
     initialValues: {
@@ -78,27 +77,53 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
         kategorie: initialData.kategorie,
         image: null,
       });
+      setFile(null);
     } else {
-      form.reset(); // reset nur bei Neuanlage
+      form.reset();
+      setFile(null);
     }
   }, [opened, initialData]);
 
-  const getWarnLevel = (ablauf: string): 'ok' | 'bald' | 'abgelaufen' => {
-    const today = new Date();
-    const expiry = new Date(ablauf);
-    const diff = (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-    if (diff < 0) {
-      return 'abgelaufen';
+  // const getWarnLevel = (ablauf: Date): 'ok' | 'bald' | 'abgelaufen' => {
+  //   const today = new Date();
+  //   const expiry = new Date(ablauf);
+  //   const diff = (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  //   if (diff < 0) {
+  //     return 'abgelaufen';
+  //   }
+  //   if (diff <= 3) {
+  //     return 'bald';
+  //   }
+  //   return 'ok';
+  // };
+
+  const handleImageUpload = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      return null;
     }
-    if (diff <= 3) {
-      return 'bald';
-    }
-    return 'ok';
+    const json = await res.json();
+    return json.url || null;
   };
 
-  const handleSubmit = (values: typeof form.values) => {
+  const handleSubmit = async (values: typeof form.values) => {
     const ablaufdatumStr = formatDateToDisplay(values.ablaufdatum);
     const erfasstAmStr = formatDateToDisplay(values.erfasstAm);
+
+    let imageUrl = initialData?.image || '';
+    if (file) {
+      const uploaded = await handleImageUpload(file);
+      if (uploaded) {
+        imageUrl = uploaded;
+      }
+    }
 
     const newCard: CardData = {
       id: initialData?.id || uuidv4(),
@@ -108,25 +133,17 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
       ablaufdatum: ablaufdatumStr,
       erfasstAm: erfasstAmStr,
       kategorie: values.kategorie,
-      image: imageBase64,
-      warnLevel: getWarnLevel(ablaufdatumStr),
+      image: imageUrl,
     };
 
     onCreate(newCard);
     form.reset();
-    setImageBase64('');
+    setFile(null);
     onClose();
   };
 
-  const handleImageChange = (file: File | null) => {
-    if (!file) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImageBase64(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  const handleImageChange = (f: File | null) => {
+    setFile(f);
   };
 
   return (
@@ -141,11 +158,22 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
-          <TextInput maxLength={20} label="Name" {...form.getInputProps('name')} required />
+          <TextInput
+            leftSection={<IconLabel size={18} stroke={1.5} />}
+            maxLength={20}
+            label="Name"
+            {...form.getInputProps('name')}
+            required
+          />
 
           <Group grow>
             <NumberInput label="Menge" max={999999999} min={1} {...form.getInputProps('menge')} />
-            <Select label="Einheit" data={einheiten} {...form.getInputProps('einheit')} />
+            <Select
+              label="Einheit"
+              allowDeselect={false}
+              data={einheiten}
+              {...form.getInputProps('einheit')}
+            />
           </Group>
 
           <Group grow>
@@ -168,6 +196,7 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
           </Group>
 
           <Select
+            allowDeselect={false}
             leftSection={<IconCategory size={18} stroke={1.5} />}
             label="Kategorie"
             data={kategorien}

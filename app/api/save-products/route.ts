@@ -1,6 +1,5 @@
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { WarnLevel } from '@prisma/client';
 import { auth } from '@/app/lib/auth';
 import { formatDateToDb } from '@/app/lib/dateUtils';
 import prisma from '@/app/lib/prisma';
@@ -60,7 +59,6 @@ export async function POST(req: NextRequest) {
       erfasstAm: formatDateToDb(card.erfasstAm),
       kategorie: card.kategorie,
       bildUrl: card.image || '',
-      warnLevel: card.warnLevel as WarnLevel,
     }));
 
     const result = await prisma.produkt.createMany({ data });

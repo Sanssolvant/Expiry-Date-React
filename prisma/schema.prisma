@@ -29,6 +29,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   produkte      Produkt[] @relation("UserToProdukt")
+  settings      UserSettings?
 
   @@map("user")
 }
@@ -81,7 +82,7 @@ model Verification {
 }
 
 model Produkt {
-  id          Int       @id @default(autoincrement())
+  id          String       @id @default(cuid()) @map("_id")
   userId      String
   user        User      @relation("UserToProdukt", fields: [userId], references: [id])
   name        String
@@ -91,14 +92,17 @@ model Produkt {
   erfasstAm   DateTime
   kategorie   String
   bildUrl     String
-  warnLevel   WarnLevel
   createdAt   DateTime  @default(now())
 
   @@map("produkt")
 }
 
-enum WarnLevel {
-  ok
-  bald
-  abgelaufen
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  warnLevelBald   Int      @default(3)  // z.B. 3 Tage
+  warnLevelExpired Int     @default(0)  // z.B. 0 Tage = abgelaufen
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("userSettings")
 }
