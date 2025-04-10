@@ -5,7 +5,12 @@ import { auth } from '@/app/lib/auth';
 import prisma from '@/app/lib/prisma';
 
 export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: {
+      disableCookieCache: true, // 🔥 ganz wichtig!
+    },
+  });
 
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 });

@@ -84,34 +84,42 @@ export function LoginForm() {
       {success === 'true' && <NotificationElementSuccess text={text} />}
       {success === 'false' && <NotificationElementError text={text} />}
       <ColorSchemeToggle />
-      <Paper className={classes.form} radius={0} p={30}>
-        <Title order={2} className={classes.title} ta="center" mt="md" mb={50}>
-          Willkommen auf{' '}
-          <Text inherit variant="gradient" component="span" gradient={{ from: 'blue', to: 'cyan' }}>
-            TrackShelf
-          </Text>{' '}
-          !
-        </Title>
-        <form onSubmit={handleSubmit}>
-          <EmailFieldLogin form={form} />
-          <PasswordFieldLogin form={form} />
-          <CheckboxLogin form={form} />
-          <Button loading={loading} fullWidth mt="xl" size="md" type="submit">
-            Anmelden
-          </Button>
-        </form>
-        <Text ta="center" mt="md">
-          Kein Account?{' '}
-          <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/register')}>
-            Registrieren
-          </Anchor>
-        </Text>
-        <Text ta="center" mt="sm">
-          <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/forgot-password')}>
-            Passwort vergessen?
-          </Anchor>
-        </Text>
-      </Paper>
+      <div className={classes.form}>
+        <Paper className={classes.form} radius={0} p={30}>
+          <Title order={2} className={classes.title} ta="center" mt="md" mb={50}>
+            Willkommen auf{' '}
+            <Text
+              inherit
+              variant="gradient"
+              component="span"
+              gradient={{ from: 'blue', to: 'cyan' }}
+            >
+              TrackShelf
+            </Text>{' '}
+            !
+          </Title>
+          <form onSubmit={handleSubmit}>
+            <EmailFieldLogin form={form} />
+            <PasswordFieldLogin form={form} />
+            <CheckboxLogin form={form} />
+            <Button loading={loading} fullWidth mt="xl" size="md" type="submit">
+              Anmelden
+            </Button>
+          </form>
+          <Text ta="center" mt="md">
+            Kein Account?{' '}
+            <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/register')}>
+              Registrieren
+            </Anchor>
+          </Text>
+          <Text ta="center" mt="sm">
+            <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/forgot-password')}>
+              Passwort vergessen?
+            </Anchor>
+          </Text>
+        </Paper>
+      </div>
+      <div className={classes.imageSide} />
     </div>
   );
 }
