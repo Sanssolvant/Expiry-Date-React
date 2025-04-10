@@ -14,9 +14,9 @@ export function ColorSchemeToggle() {
         checked={colorScheme === 'dark'}
         onClick={() => toggleColorScheme()}
         size="lg"
-        color={dark ? 'blue' : 'dark'}
+        color={dark ? '#1C7ED6' : 'dark'}
         onLabel={<IconSun size="1rem" stroke={2.5} color="yellow" />}
-        offLabel={<IconMoonStars size="1rem" stroke={2.5} color="blue" />}
+        offLabel={<IconMoonStars size="1rem" stroke={2.5} color="#1C7ED6" />}
       />
     </Group>
   );
