@@ -20,6 +20,7 @@ import '@mantine/dates/styles.css';
 
 import { IconCalendar, IconCategory, IconLabel, IconPhoto } from '@tabler/icons-react';
 import { formatDateToDisplay, parseDateFromString } from '@/app/lib/dateUtils';
+import { einheiten, kategorien } from '@/app/types';
 
 type CardData = {
   id: string;
@@ -38,9 +39,6 @@ type Props = {
   onCreate: (card: CardData) => void;
   initialData?: CardData | null;
 };
-
-const kategorien = ['Obst', 'Gemüse', 'Milchprodukt', 'Tiefkühl', 'Konserve', 'Getreide'];
-const einheiten = ['Stk', 'g', 'kg', 'ml', 'L', 'Packung'];
 
 export function CardCreateModal({ opened, onClose, onCreate, initialData }: Props) {
   const [file, setFile] = useState<File | null>(null);
@@ -83,19 +81,6 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
       setFile(null);
     }
   }, [opened, initialData]);
-
-  // const getWarnLevel = (ablauf: Date): 'ok' | 'bald' | 'abgelaufen' => {
-  //   const today = new Date();
-  //   const expiry = new Date(ablauf);
-  //   const diff = (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-  //   if (diff < 0) {
-  //     return 'abgelaufen';
-  //   }
-  //   if (diff <= 3) {
-  //     return 'bald';
-  //   }
-  //   return 'ok';
-  // };
 
   const handleImageUpload = async (file: File): Promise<string | null> => {
     const formData = new FormData();

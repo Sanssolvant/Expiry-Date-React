@@ -1,6 +1,7 @@
 import { IconPhoto } from '@tabler/icons-react';
 import { motion } from 'framer-motion';
 import { Badge, Button, Card, Center, Image, Text } from '@mantine/core';
+import { WarnLevel } from '@/app/types';
 
 type Props = {
   image: string;
@@ -10,7 +11,7 @@ type Props = {
   ablaufdatum: string;
   erfasstAm: string;
   kategorie: string;
-  warnLevel: 'ok' | 'bald' | 'abgelaufen';
+  warnLevel: WarnLevel;
   isDragging?: boolean;
   onDelete?: () => void;
 };
@@ -27,7 +28,8 @@ export function GridItem({
   isDragging,
   onDelete,
 }: Props) {
-  const warnColor = warnLevel === 'ok' ? 'green' : warnLevel === 'bald' ? 'yellow' : 'red';
+  const warnColor =
+    warnLevel === WarnLevel.OK ? 'green' : warnLevel === WarnLevel.BALD ? 'yellow' : 'red';
 
   return (
     <motion.div
@@ -75,7 +77,11 @@ export function GridItem({
           mt="xs"
           style={{ alignSelf: 'flex-end', paddingBlock: '10px' }}
         >
-          {warnLevel === 'ok' ? 'Frisch' : warnLevel === 'bald' ? 'Bald abgelaufen' : 'Abgelaufen'}
+          {warnLevel === WarnLevel.OK
+            ? 'Frisch'
+            : warnLevel === WarnLevel.BALD
+              ? 'Bald abgelaufen'
+              : 'Abgelaufen'}
         </Badge>
 
         {/* Inhalt */}

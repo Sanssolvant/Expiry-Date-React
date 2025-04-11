@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { IconArrowBack } from '@tabler/icons-react';
 import { AppShell, Box, Button, Container, Flex, Group, Paper, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
-import { ColorSchemeToggle } from './General/ColorSchemeToggle';
 import { EmailField } from './General/EmailField';
 import { Logo } from './General/Logo';
 import { NotificationElementError } from './General/NotificationElementError';
@@ -83,14 +83,20 @@ export function ForgotPasswordForm() {
                 <EmailField form={form} />
               </Box>
               <Group justify="center" mt="md">
-                <Button fullWidth loading={loading} variant="light" type="submit">
+                <Button
+                  leftSection={<IconArrowBack size={14} />}
+                  variant="light"
+                  onClick={() => router.push('/')}
+                >
+                  Zurück
+                </Button>
+                <Button loading={loading} variant="light" type="submit">
                   Email verschicken
                 </Button>
               </Group>
             </form>
           </Paper>
         </Container>
-        <ColorSchemeToggle />
       </Flex>
     </AppShell>
   );

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell, Box, Button, Container, Flex, Group, Paper, Text, Title } from '@mantine/core';
 import { matches, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
-import { ColorSchemeToggle } from './General/ColorSchemeToggle';
 import { Logo } from './General/Logo';
 import { NotificationElementError } from './General/NotificationElementError';
 import { PasswordConfirmField } from './General/PasswordConfirmField';
@@ -56,7 +55,6 @@ export function ResetPasswordForm() {
               </Title>
             </Paper>
           </Container>
-          <ColorSchemeToggle />
         </Flex>
       </AppShell>
     );
@@ -137,7 +135,6 @@ export function ResetPasswordForm() {
             </form>
           </Paper>
         </Container>
-        <ColorSchemeToggle />
       </Flex>
     </AppShell>
   );

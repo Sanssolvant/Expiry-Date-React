@@ -9,9 +9,16 @@ type Props = {
   abgelaufenAb: number;
   setBaldAb: (n: number) => void;
   setAbgelaufenAb: (n: number) => void;
+  iconOnly?: boolean;
 };
 
-export function SettingsMenu({ baldAb, abgelaufenAb, setBaldAb, setAbgelaufenAb }: Props) {
+export function SettingsMenu({
+  baldAb,
+  abgelaufenAb,
+  setBaldAb,
+  setAbgelaufenAb,
+  iconOnly,
+}: Props) {
   const [opened, setOpened] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -58,12 +65,15 @@ export function SettingsMenu({ baldAb, abgelaufenAb, setBaldAb, setAbgelaufenAb 
       shadow="md"
     >
       <Popover.Target>
-        <Button
-          variant="default"
-          leftSection={<IconSettings size={18} />}
-          onClick={() => setOpened((o) => !o)}
-        >
-          Einstellungen
+        <Button variant="default" onClick={() => setOpened((o) => !o)}>
+          {iconOnly ? (
+            <IconSettings size={18} />
+          ) : (
+            <>
+              {' '}
+              <IconSettings size={18} style={{ marginRight: 10 }} /> Einstellungen{' '}
+            </>
+          )}
         </Button>
       </Popover.Target>
 

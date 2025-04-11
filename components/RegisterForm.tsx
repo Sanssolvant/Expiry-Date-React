@@ -6,7 +6,6 @@ import { IconArrowBack, IconSend } from '@tabler/icons-react';
 import { AppShell, Box, Button, Container, Flex, Group, Paper, Title } from '@mantine/core';
 import { hasLength, isEmail, matches, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
-import { ColorSchemeToggle } from './General/ColorSchemeToggle';
 import { EmailField } from './General/EmailField';
 import { Logo } from './General/Logo';
 import { NotificationElementError } from './General/NotificationElementError';
@@ -138,7 +137,6 @@ export function RegisterForm() {
             </form>
           </Paper>
         </Container>
-        <ColorSchemeToggle />
       </Flex>
     </AppShell>
   );

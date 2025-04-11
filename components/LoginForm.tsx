@@ -6,7 +6,6 @@ import { Anchor, Button, Paper, Text, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
 import { CheckboxLogin } from './General/CheckboxLogin';
-import { ColorSchemeToggle } from './General/ColorSchemeToggle';
 import { EmailFieldLogin } from './General/EmailFieldLogin';
 import { NotificationElementError } from './General/NotificationElementError';
 import { NotificationElementSuccess } from './General/NotificationElementSuccess';
@@ -83,10 +82,9 @@ export function LoginForm() {
     <div className={classes.wrapper}>
       {success === 'true' && <NotificationElementSuccess text={text} />}
       {success === 'false' && <NotificationElementError text={text} />}
-      <ColorSchemeToggle />
       <div className={classes.form}>
         <Paper className={classes.form} radius={0} p={30}>
-          <Title order={2} className={classes.title} ta="center" mt="md" mb={50}>
+          <Title order={2} className={classes.title} ta="center" mt="md" mb={20}>
             Willkommen auf{' '}
             <Text
               inherit
@@ -98,7 +96,7 @@ export function LoginForm() {
             </Text>{' '}
             !
           </Title>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className={classes.formular}>
             <EmailFieldLogin form={form} />
             <PasswordFieldLogin form={form} />
             <CheckboxLogin form={form} />

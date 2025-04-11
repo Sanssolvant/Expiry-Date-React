@@ -1,4 +1,4 @@
-export type WarnLevel = 'ok' | 'bald' | 'abgelaufen';
+import { WarnLevel } from '@/app/types';
 
 /**
  * Berechnet das Warnlevel basierend auf dem Ablaufdatum (im Format DD.MM.YYYY)
@@ -7,7 +7,7 @@ export function calculateWarnLevel(
   ablaufdatum: string,
   baldAb: number = 3,
   abgelaufenAb: number = 0
-): 'ok' | 'bald' | 'abgelaufen' {
+): WarnLevel {
   const [day, month, year] = ablaufdatum.split('.');
   const expiryDate = new Date(`${year}-${month}-${day}T12:00:00`);
   const today = new Date();
@@ -16,12 +16,12 @@ export function calculateWarnLevel(
   );
 
   if (diffInDays <= abgelaufenAb) {
-    return 'abgelaufen';
+    return WarnLevel.ABGELAUFEN;
   }
 
   if (diffInDays <= baldAb) {
-    return 'bald';
+    return WarnLevel.BALD;
   }
 
-  return 'ok';
+  return WarnLevel.OK;
 }

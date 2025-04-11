@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { IconCheck, IconX } from '@tabler/icons-react';
+import { IconCheck, IconDeviceFloppy, IconPlus, IconX } from '@tabler/icons-react';
 import { motion } from 'framer-motion';
 import {
   Box,
@@ -22,15 +22,15 @@ import {
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
+import { WarnLevel } from '@/app/types';
 import { CardCreateModal } from './CardCreateModal';
 import { CardFilterMenu } from './CardFilterMenu';
 import { GridItem } from './GridItem';
 import { SettingsMenu } from './SettingsMenu';
-
-export type WarnLevel = 'ok' | 'bald' | 'abgelaufen';
 
 export type CardData = {
   id: string;
@@ -67,6 +67,8 @@ export default function DndGrid() {
     mengeVon: null,
     mengeBis: null,
   });
+
+  const isMobile = useMediaQuery('(max-width: 500px)'); // oder '(max-width: 768px)' je nach Wunsch
 
   const cards = useMemo(() => {
     return rawCards.map((card) => ({
@@ -242,13 +244,31 @@ export default function DndGrid() {
         initialData={editingCard}
       />
 
-      <Group mt="md">
-        <Button onClick={() => setModalOpen(true)}>Karte hinzufügen</Button>
-        <Button onClick={handleSave} color="green" variant="outline" loading={loading}>
-          Alle speichern
+      <Group mt="md" justify="center">
+        <Button onClick={() => setModalOpen(true)}>
+          {isMobile ? (
+            <IconPlus size={18} />
+          ) : (
+            <>
+              {' '}
+              <IconPlus size={18} style={{ marginRight: 10 }} /> Karte hinzufügen{' '}
+            </>
+          )}
         </Button>
-        <CardFilterMenu filters={filters} setFilters={setFilters} />
+
+        <Button onClick={handleSave} color="green" variant="outline" loading={loading}>
+          {isMobile ? (
+            <IconDeviceFloppy size={18} />
+          ) : (
+            <>
+              {' '}
+              <IconDeviceFloppy size={18} style={{ marginRight: 10 }} /> Alle speichern{' '}
+            </>
+          )}
+        </Button>
+        <CardFilterMenu iconOnly={isMobile} filters={filters} setFilters={setFilters} />
         <SettingsMenu
+          iconOnly={isMobile}
           baldAb={warnBaldAb}
           abgelaufenAb={warnAbgelaufenAb}
           setBaldAb={setWarnBaldAb}
@@ -266,7 +286,7 @@ export default function DndGrid() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={cards.map((c) => c.id)} strategy={rectSortingStrategy}>
             <SimpleGrid
-              cols={{ base: 3, sm: 4, md: 6 }}
+              cols={{ base: 2, sm: 4, md: 6 }}
               spacing={{ base: 10, sm: 20 }}
               verticalSpacing={{ base: 'md', sm: 'xl' }}
             >

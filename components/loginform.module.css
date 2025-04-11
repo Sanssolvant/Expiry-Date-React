@@ -1,20 +1,54 @@
 .wrapper {
-  display: flex; /* Zwei Spalten nebeneinander */
+  display: flex;
   min-height: 100vh;
 }
 
+/* Linke Seite – das Formular */
 .form {
   flex: 0 0 500px;
   padding-top: 80px;
   border-right: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-7));
   background-color: var(--mantine-color-body);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
 }
 
+.formular {
+  min-width: 300px;
+}
+
+/* Rechte Seite – das Bild */
 .imageSide {
   flex: 1;
   background-image: url('/img/hintergrund.png');
-  background-size: contain; /* ← zeigt das ganze Bild, ohne es zu beschneiden */
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: #2487ab; /* optionaler Hintergrund, damit der Rand schön aussieht */
+  background-color: #1e789c;
+}
+
+/* 📱 Mobile Ansicht */
+@media (max-width: 768px) {
+  .wrapper {
+    flex-direction: column;
+  }
+
+  .form {
+    flex: none;
+    width: 100%;
+    border-right: none;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .title {
+    margin: 0;
+    padding: 0;
+  }
+
+  .imageSide {
+    display: none;
+  }
 }

@@ -43,4 +43,5 @@ export const auth = betterAuth({
       enabled: true,
     },
   },
+  trustedOrigins: ['192.168.1.148://'],
 });

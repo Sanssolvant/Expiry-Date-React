@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   IconAdjustmentsHorizontal,
   IconCalendar,
@@ -7,28 +8,39 @@ import {
   IconClockExclamation,
   IconSearch,
 } from '@tabler/icons-react';
-import { Button, Group, NumberInput, Popover, Select, Stack, TextInput } from '@mantine/core';
+import { Button, Group, Modal, NumberInput, Select, Stack, TextInput } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-
-const kategorien = ['Obst', 'Gemüse', 'Fleisch', 'Milchprodukt', 'Tiefkühl', 'Konserve'];
-const einheiten = ['Stk', 'g', 'kg', 'ml', 'L', 'Packung'];
-
-export type WarnLevel = 'ok' | 'bald' | 'abgelaufen';
+import { einheiten, kategorien, WarnLevel } from '@/app/types';
 
 type Props = {
   filters: any;
   setFilters: (filters: any) => void;
+  iconOnly?: boolean;
 };
 
-export function CardFilterMenu({ filters, setFilters }: Props) {
+export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
+  const [opened, setOpened] = useState(false);
+
   return (
-    <Popover width={300} position="bottom-end" withArrow shadow="md">
-      <Popover.Target>
-        <Button variant="default" leftSection={<IconAdjustmentsHorizontal size={18} />}>
-          Filtern
-        </Button>
-      </Popover.Target>
-      <Popover.Dropdown>
+    <>
+      <Button variant="default" onClick={() => setOpened(true)}>
+        {iconOnly ? (
+          <IconAdjustmentsHorizontal size={18} />
+        ) : (
+          <>
+            <IconAdjustmentsHorizontal size={18} style={{ marginRight: 10 }} /> Filtern
+          </>
+        )}
+      </Button>
+
+      <Modal
+        opened={opened}
+        onClose={() => setOpened(false)}
+        title="Filter"
+        centered
+        size="md"
+        overlayProps={{ blur: 3, backgroundOpacity: 0.5 }}
+      >
         <Stack gap="xs">
           <TextInput
             label="Name"
@@ -69,9 +81,9 @@ export function CardFilterMenu({ filters, setFilters }: Props) {
             leftSection={<IconClockExclamation size={18} stroke={1.5} />}
             label="Warnlevel"
             data={[
-              { value: 'ok', label: 'Frisch' },
-              { value: 'bald', label: 'Bald abgelaufen' },
-              { value: 'abgelaufen', label: 'Abgelaufen' },
+              { value: WarnLevel.OK, label: 'Frisch' },
+              { value: WarnLevel.BALD, label: 'Bald abgelaufen' },
+              { value: WarnLevel.ABGELAUFEN, label: 'Abgelaufen' },
             ]}
             clearable
             value={filters.warnLevel}
@@ -94,27 +106,31 @@ export function CardFilterMenu({ filters, setFilters }: Props) {
             />
           </Group>
 
-          {/* 👇 Hier kommt der Reset-Button */}
-          <Button
-            variant="light"
-            color="blue"
-            onClick={() =>
-              setFilters({
-                name: '',
-                kategorie: '',
-                einheit: '',
-                warnLevel: '',
-                ablaufVon: null,
-                ablaufBis: null,
-                mengeVon: null,
-                mengeBis: null,
-              })
-            }
-          >
-            Filter zurücksetzen
-          </Button>
+          <Group justify="space-between" mt="md">
+            <Button
+              variant="light"
+              color="gray"
+              onClick={() =>
+                setFilters({
+                  name: '',
+                  kategorie: '',
+                  einheit: '',
+                  warnLevel: '',
+                  ablaufVon: null,
+                  ablaufBis: null,
+                  mengeVon: null,
+                  mengeBis: null,
+                })
+              }
+            >
+              Filter zurücksetzen
+            </Button>
+            <Button variant="filled" onClick={() => setOpened(false)}>
+              Übernehmen
+            </Button>
+          </Group>
         </Stack>
-      </Popover.Dropdown>
-    </Popover>
+      </Modal>
+    </>
   );
 }
