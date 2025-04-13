@@ -98,14 +98,37 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
     return json.url || null;
   };
 
+  const waitForImage = async (url: string, maxRetries = 5, delay = 300): Promise<boolean> => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok && res.headers.get('content-type')?.startsWith('image/')) {
+          return true;
+        }
+      } catch (err) {
+        /* empty */
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    return false;
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
     const ablaufdatumStr = formatDateToDisplay(values.ablaufdatum);
     const erfasstAmStr = formatDateToDisplay(values.erfasstAm);
 
     let imageUrl = initialData?.image || '';
+
     if (file) {
       const uploaded = await handleImageUpload(file);
       if (uploaded) {
+        console.error('📷 Upload-URL:', uploaded);
+
+        const ready = await waitForImage(uploaded);
+        if (!ready) {
+          console.warn('⚠️ Bild konnte nach Upload nicht geladen werden!');
+        }
+
         imageUrl = uploaded;
       }
     }
@@ -194,6 +217,7 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
             leftSection={<IconPhoto size={18} stroke={1.5} />}
             label="Bild auswählen"
             accept="image/*"
+            capture="environment"
             onChange={handleImageChange}
           />
 

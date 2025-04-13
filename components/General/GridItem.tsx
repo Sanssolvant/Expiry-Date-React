@@ -28,6 +28,8 @@ export function GridItem({
   isDragging,
   onDelete,
 }: Props) {
+  console.error('📷 GridItem Image:', image);
+
   const warnColor =
     warnLevel === WarnLevel.OK ? 'green' : warnLevel === WarnLevel.BALD ? 'yellow' : 'red';
 
@@ -61,7 +63,14 @@ export function GridItem({
         {/* Bild oder Icon */}
         <Card.Section>
           {image && image.trim() !== '' ? (
-            <Image src={image} height={90} alt={name} fit="cover" />
+            <Image
+              src={image}
+              height={90}
+              fit="cover"
+              radius="sm"
+              alt={name}
+              style={{ width: '100%', objectFit: 'cover', objectPosition: 'center' }} // ✅
+            />
           ) : (
             <Center style={{ height: 90, backgroundColor: '#f1f3f5' }}>
               <IconPhoto size={40} color="#ccc" />

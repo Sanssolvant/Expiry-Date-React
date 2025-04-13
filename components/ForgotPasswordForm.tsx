@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { IconArrowBack } from '@tabler/icons-react';
+import { IconArrowBack, IconSend } from '@tabler/icons-react';
 import { AppShell, Box, Button, Container, Flex, Group, Paper, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
@@ -90,8 +90,13 @@ export function ForgotPasswordForm() {
                 >
                   Zurück
                 </Button>
-                <Button loading={loading} variant="light" type="submit">
-                  Email verschicken
+                <Button
+                  rightSection={<IconSend size={14} />}
+                  loading={loading}
+                  variant="light"
+                  type="submit"
+                >
+                  Senden
                 </Button>
               </Group>
             </form>

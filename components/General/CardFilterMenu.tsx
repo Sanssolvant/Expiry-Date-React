@@ -6,9 +6,8 @@ import {
   IconCalendar,
   IconCategory,
   IconClockExclamation,
-  IconSearch,
 } from '@tabler/icons-react';
-import { Button, Group, Modal, NumberInput, Select, Stack, TextInput } from '@mantine/core';
+import { Button, Group, Modal, NumberInput, Select, Stack } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { einheiten, kategorien, WarnLevel } from '@/app/types';
 
@@ -42,12 +41,6 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
         overlayProps={{ blur: 3, backgroundOpacity: 0.5 }}
       >
         <Stack gap="xs">
-          <TextInput
-            label="Name"
-            leftSection={<IconSearch size={16} />}
-            value={filters.name}
-            onChange={(e) => setFilters((f: any) => ({ ...f, name: e.currentTarget.value }))}
-          />
           <Select
             leftSection={<IconCategory size={18} stroke={1.5} />}
             label="Kategorie"
@@ -106,10 +99,9 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
             />
           </Group>
 
-          <Group justify="space-between" mt="md">
+          <Group justify="flex-end" mt="md">
             <Button
-              variant="light"
-              color="gray"
+              variant="default"
               onClick={() =>
                 setFilters({
                   name: '',
@@ -123,7 +115,7 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
                 })
               }
             >
-              Filter zurücksetzen
+              Zurücksetzen
             </Button>
             <Button variant="filled" onClick={() => setOpened(false)}>
               Übernehmen

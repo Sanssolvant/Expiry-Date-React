@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { IconCheck, IconDeviceFloppy, IconPlus, IconX } from '@tabler/icons-react';
+import { IconCheck, IconDeviceFloppy, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
 import { motion } from 'framer-motion';
 import {
   Box,
@@ -19,6 +19,7 @@ import {
   Group,
   SimpleGrid,
   Stack,
+  TextInput,
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
@@ -174,12 +175,17 @@ export default function DndGrid() {
 
   const handleCreateCard = (card: CardData) => {
     const { warnLevel, ...cardWithoutWarn } = card;
+
     const exists = rawCards.find((c) => c.id === card.id);
     if (exists) {
-      setRawCards((prev) => prev.map((c) => (c.id === card.id ? card : c)));
+      setRawCards((prev) => prev.map((c) => (c.id === card.id ? cardWithoutWarn : c)));
     } else {
       setRawCards((prev) => [...prev, cardWithoutWarn]);
     }
+
+    // Optional: Debug
+    console.error('🆕 Hinzugefügt:', cardWithoutWarn);
+
     setEditingCard(null);
   };
 
@@ -220,10 +226,9 @@ export default function DndGrid() {
         icon: <IconCheck size={18} />,
       });
     } else {
-      const error = await res.json();
       notifications.show({
         title: 'Fehler beim Speichern',
-        message: error?.error || 'Unbekannter Fehler beim Speichern',
+        message: 'Unbekannter Fehler beim Speichern',
         color: 'red',
         icon: <IconX size={18} />,
       });
@@ -273,6 +278,19 @@ export default function DndGrid() {
           abgelaufenAb={warnAbgelaufenAb}
           setBaldAb={setWarnBaldAb}
           setAbgelaufenAb={setWarnAbgelaufenAb}
+        />
+
+        <TextInput
+          leftSection={<IconSearch size={16} />}
+          placeholder="Name suchen..."
+          value={filters.name || ''} // Fallback falls null
+          onChange={(e) => {
+            const val = e?.currentTarget?.value ?? '';
+            if (typeof val === 'string') {
+              setFilters((prev) => ({ ...prev, name: val }));
+            }
+          }}
+          style={{ maxWidth: 600, minWidth: 300 }}
         />
       </Group>
 

@@ -134,7 +134,9 @@ dist
 trackShelf_DB.sql
 trackShelf_DB_Neu.sql
 
-/public/uploads
+# /public/uploads/.gitkeep erlauben
+/public/uploads/*
+!/public/uploads/.gitkeep
 /public/images
 
 

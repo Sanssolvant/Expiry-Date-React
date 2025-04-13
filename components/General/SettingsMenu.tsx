@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IconSettings } from '@tabler/icons-react';
-import { Button, NumberInput, Popover, Stack, Text } from '@mantine/core';
+import { Button, Group, Modal, NumberInput, Stack, Text } from '@mantine/core';
 
 type Props = {
   baldAb: number;
@@ -24,6 +24,18 @@ export function SettingsMenu({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const [localBald, setLocalBald] = useState(baldAb);
+  const [localExpired, setLocalExpired] = useState(abgelaufenAb);
+
+  useEffect(() => {
+    if (opened) {
+      setLocalBald(baldAb);
+      setLocalExpired(abgelaufenAb);
+      setError('');
+      setSuccess(false);
+    }
+  }, [opened, baldAb, abgelaufenAb]);
+
   const handleSave = async () => {
     setSaving(true);
     setError('');
@@ -37,8 +49,8 @@ export function SettingsMenu({
         },
         credentials: 'include',
         body: JSON.stringify({
-          warnLevelBald: baldAb,
-          warnLevelExpired: abgelaufenAb,
+          warnLevelBald: localBald,
+          warnLevelExpired: localExpired,
         }),
       });
 
@@ -47,7 +59,10 @@ export function SettingsMenu({
         throw new Error(data?.error || 'Fehler beim Speichern');
       }
 
+      setBaldAb(localBald);
+      setAbgelaufenAb(localExpired);
       setSuccess(true);
+      setTimeout(() => setOpened(false), 800); // nach kurzem Erfolg schließen
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -56,47 +71,41 @@ export function SettingsMenu({
   };
 
   return (
-    <Popover
-      opened={opened}
-      onChange={setOpened}
-      width={300}
-      position="bottom-end"
-      withArrow
-      shadow="md"
-    >
-      <Popover.Target>
-        <Button variant="default" onClick={() => setOpened((o) => !o)}>
-          {iconOnly ? (
-            <IconSettings size={18} />
-          ) : (
-            <>
-              {' '}
-              <IconSettings size={18} style={{ marginRight: 10 }} /> Einstellungen{' '}
-            </>
-          )}
-        </Button>
-      </Popover.Target>
+    <>
+      <Button variant="default" onClick={() => setOpened(true)}>
+        {iconOnly ? (
+          <IconSettings size={18} />
+        ) : (
+          <>
+            <IconSettings size={18} style={{ marginRight: 10 }} />
+            Einstellungen
+          </>
+        )}
+      </Button>
 
-      <Popover.Dropdown>
-        <Stack gap="xs">
-          <Text size="sm" fw={500}>
-            Warnlevel (Tage)
-          </Text>
-
+      <Modal
+        opened={opened}
+        onClose={() => setOpened(false)}
+        title="Warnlevel-Einstellungen"
+        centered
+        size="md"
+        overlayProps={{ blur: 3, backgroundOpacity: 0.4 }}
+      >
+        <Stack>
           <NumberInput
-            label="Bald ablaufend ab"
+            label="Bald ablaufend ab (Tage)"
             min={1}
             max={30}
-            value={baldAb}
-            onChange={(val) => setBaldAb(Number(val))}
+            value={localBald}
+            onChange={(val) => setLocalBald(Number(val))}
           />
 
           <NumberInput
-            label="Abgelaufen ab"
+            label="Abgelaufen seit (Tage)"
             min={0}
-            max={baldAb - 1}
-            value={abgelaufenAb}
-            onChange={(val) => setAbgelaufenAb(Number(val))}
+            max={localBald - 1}
+            value={localExpired}
+            onChange={(val) => setLocalExpired(Number(val))}
           />
 
           {error && (
@@ -110,11 +119,16 @@ export function SettingsMenu({
             </Text>
           )}
 
-          <Button variant="light" color="blue" onClick={handleSave} loading={saving} size="xs">
-            Speichern
-          </Button>
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setOpened(false)}>
+              Abbrechen
+            </Button>
+            <Button variant="filled" color="blue" onClick={handleSave} loading={saving}>
+              Speichern
+            </Button>
+          </Group>
         </Stack>
-      </Popover.Dropdown>
-    </Popover>
+      </Modal>
+    </>
   );
 }

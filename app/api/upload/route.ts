@@ -1,4 +1,3 @@
-// app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { writeFile } from 'fs/promises';
@@ -9,23 +8,25 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get('file') as File;
 
-  if (!file) {
+  if (!file || typeof file === 'string') {
     return NextResponse.json({ error: 'Kein Bild erhalten' }, { status: 400 });
   }
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const filename = `${Date.now()}-${randomUUID()}-${file.name}`;
+  const filename = `${Date.now()}-${randomUUID()}-${file.name}`.replace(/\s+/g, '-');
   const filePath = path.join(process.cwd(), 'public/uploads', filename);
 
   try {
     const resized = await sharp(buffer)
+      .rotate() // Korrigiert EXIF-Ausrichtung
+      .toFormat('jpeg') // 🔥 zwingt JPEG-Neu-Encoding
       .resize({
-        width: 800, // Max Breite
+        width: 800,
         withoutEnlargement: true,
       })
-      .jpeg({ quality: 75 }) // Kompression
+      .jpeg({ quality: 75 })
       .toBuffer();
 
     await writeFile(filePath, resized);
