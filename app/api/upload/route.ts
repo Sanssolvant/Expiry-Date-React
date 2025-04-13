@@ -15,13 +15,12 @@ export async function POST(req: NextRequest) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const filename = `${Date.now()}-${randomUUID()}-${file.name}`.replace(/\s+/g, '-');
-  const filePath = path.join(process.cwd(), 'public/uploads', filename);
+  const filename = `${Date.now()}-${randomUUID()}-${file.name}`;
+  const filePath = path.join(process.cwd(), 'uploads', filename);
 
   try {
     const resized = await sharp(buffer)
-      .rotate() // Korrigiert EXIF-Ausrichtung
-      .toFormat('jpeg') // 🔥 zwingt JPEG-Neu-Encoding
+      .rotate() // 🔥 Dreht Bild basierend auf EXIF-Ausrichtung
       .resize({
         width: 800,
         withoutEnlargement: true,
