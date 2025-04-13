@@ -31,7 +31,6 @@ export function ForgotPasswordForm() {
     event.preventDefault(); // Verhindert das automatische Absenden des Formulars
 
     if (form.validate().hasErrors) {
-      console.error('Formular enthält Fehler');
       return;
     }
 

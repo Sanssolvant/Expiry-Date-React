@@ -46,7 +46,6 @@ export function RegisterForm() {
     }
 
     if (form.validate().hasErrors) {
-      console.error('Formular enthält Fehler');
       return;
     }
 

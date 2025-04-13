@@ -28,8 +28,6 @@ export function GridItem({
   isDragging,
   onDelete,
 }: Props) {
-  console.error('📷 GridItem Image:', image);
-
   const warnColor =
     warnLevel === WarnLevel.OK ? 'green' : warnLevel === WarnLevel.BALD ? 'yellow' : 'red';
 

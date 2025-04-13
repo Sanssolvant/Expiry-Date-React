@@ -45,7 +45,7 @@ export function LoginForm() {
     event.preventDefault(); // Verhindert das automatische Absenden des Formulars
 
     if (form.validate().hasErrors) {
-      console.error('Formular enthält Fehler');
+      return;
     }
 
     await authClient.signIn.email(

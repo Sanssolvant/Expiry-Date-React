@@ -68,7 +68,7 @@ export function ResetPasswordForm() {
     }
 
     if (form.validate().hasErrors) {
-      console.error('Formular enthält Fehler');
+      return;
     }
 
     await authClient.resetPassword(

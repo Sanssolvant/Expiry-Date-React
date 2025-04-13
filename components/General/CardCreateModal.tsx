@@ -122,8 +122,6 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
     if (file) {
       const uploaded = await handleImageUpload(file);
       if (uploaded) {
-        console.error('📷 Upload-URL:', uploaded);
-
         const ready = await waitForImage(uploaded);
         if (!ready) {
           console.warn('⚠️ Bild konnte nach Upload nicht geladen werden!');

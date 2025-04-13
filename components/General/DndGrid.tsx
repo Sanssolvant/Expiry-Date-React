@@ -182,10 +182,6 @@ export default function DndGrid() {
     } else {
       setRawCards((prev) => [...prev, cardWithoutWarn]);
     }
-
-    // Optional: Debug
-    console.error('🆕 Hinzugefügt:', cardWithoutWarn);
-
     setEditingCard(null);
   };
 
