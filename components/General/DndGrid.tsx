@@ -144,7 +144,15 @@ export default function DndGrid() {
 
     const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
     const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
-    const ablaufBisMatch = !filters.ablaufBis || ablaufDate <= filters.ablaufBis;
+
+    const ablaufBisMatch =
+      !filters.ablaufBis ||
+      ablaufDate <
+        new Date(
+          filters.ablaufBis.getFullYear(),
+          filters.ablaufBis.getMonth(),
+          filters.ablaufBis.getDate() + 1
+        );
 
     const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
     const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;

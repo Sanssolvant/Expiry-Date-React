@@ -136,8 +136,10 @@ trackShelf_DB_Neu.sql
 
 # /public/uploads/.gitkeep erlauben
 /public/uploads/*
-!/public/uploads/.gitkeep
+!/uploads/.gitkeep
 /public/images
+/uploads/*
+
 
 
 docker-compose.yml

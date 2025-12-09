@@ -84,7 +84,7 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
           />
           <Group grow>
             <DatePickerInput
-              label="Ablauf ab"
+              label="Ablaufdatum von"
               valueFormat="DD.MM.YYYY"
               leftSection={<IconCalendar size={16} />}
               value={filters.ablaufVon}

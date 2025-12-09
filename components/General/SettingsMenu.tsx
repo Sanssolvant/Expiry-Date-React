@@ -24,8 +24,9 @@ export function SettingsMenu({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const [localBald, setLocalBald] = useState(baldAb);
-  const [localExpired, setLocalExpired] = useState(abgelaufenAb);
+  // Werte dürfen temporär auch leer ('' = string) sein
+  const [localBald, setLocalBald] = useState<number | ''>(baldAb);
+  const [localExpired, setLocalExpired] = useState<number | ''>(abgelaufenAb);
 
   useEffect(() => {
     if (opened) {
@@ -41,6 +42,12 @@ export function SettingsMenu({
     setError('');
     setSuccess(false);
 
+    if (localBald === '' || localExpired === '') {
+      setError('Bitte beide Werte eingeben');
+      setSaving(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/user-settings', {
         method: 'POST',
@@ -49,8 +56,8 @@ export function SettingsMenu({
         },
         credentials: 'include',
         body: JSON.stringify({
-          warnLevelBald: localBald,
-          warnLevelExpired: localExpired,
+          warnLevelBald: Number(localBald),
+          warnLevelExpired: Number(localExpired),
         }),
       });
 
@@ -59,10 +66,10 @@ export function SettingsMenu({
         throw new Error(data?.error || 'Fehler beim Speichern');
       }
 
-      setBaldAb(localBald);
-      setAbgelaufenAb(localExpired);
+      setBaldAb(Number(localBald));
+      setAbgelaufenAb(Number(localExpired));
       setSuccess(true);
-      setTimeout(() => setOpened(false), 800); // nach kurzem Erfolg schließen
+      setTimeout(() => setOpened(false), 800);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -97,15 +104,15 @@ export function SettingsMenu({
             min={1}
             max={30}
             value={localBald}
-            onChange={(val) => setLocalBald(Number(val))}
+            onChange={(val) => setLocalBald(val === '' ? '' : Number(val))}
           />
 
           <NumberInput
             label="Abgelaufen seit (Tage)"
             min={0}
-            max={localBald - 1}
+            max={(typeof localBald === 'number' ? localBald : 1) - 1}
             value={localExpired}
-            onChange={(val) => setLocalExpired(Number(val))}
+            onChange={(val) => setLocalExpired(val === '' ? '' : Number(val))}
           />
 
           {error && (
