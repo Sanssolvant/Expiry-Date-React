@@ -11,15 +11,25 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { IconCheck, IconDeviceFloppy, IconPlus, IconSearch, IconX } from '@tabler/icons-react';
+import {
+  IconCheck,
+  IconDeviceFloppy,
+  IconPlus,
+  IconSearch,
+  IconSortAscending,
+  IconSortDescending,
+  IconX,
+} from '@tabler/icons-react';
 import { motion } from 'framer-motion';
 import {
+  ActionIcon,
   Box,
   Button,
   Group,
   SimpleGrid,
   Stack,
   TextInput,
+  Tooltip,
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
@@ -27,11 +37,12 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
-import { WarnLevel } from '@/app/types';
+import { parseAblauf, WarnLevel, warnPriority } from '@/app/types';
 import { CardCreateModal } from './CardCreateModal';
 import { CardFilterMenu } from './CardFilterMenu';
 import { GridItem } from './GridItem';
 import { SettingsMenu } from './SettingsMenu';
+import { SpeechCreateModal } from './SpeechCreateModal';
 
 export type CardData = {
   id: string;
@@ -53,7 +64,7 @@ export default function DndGrid() {
   const [warnBaldAb, setWarnBaldAb] = useState(3);
   const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(0);
   const [rawCards, setRawCards] = useState<Omit<CardData, 'warnLevel'>[]>([]);
-
+  const [speechOpen, setSpeechOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
@@ -67,6 +78,7 @@ export default function DndGrid() {
     ablaufBis: null as Date | null,
     mengeVon: null,
     mengeBis: null,
+    sort: 'expiry_asc' as 'expiry_asc' | 'expiry_desc',
   });
 
   const isMobile = useMediaQuery('(max-width: 500px)'); // oder '(max-width: 768px)' je nach Wunsch
@@ -136,38 +148,57 @@ export default function DndGrid() {
     loadSettings();
   }, []);
 
-  const filteredCards = cards.filter((card) => {
-    const nameMatch = card.name.toLowerCase().includes(filters.name.toLowerCase());
-    const kategorieMatch = !filters.kategorie || card.kategorie === filters.kategorie;
-    const einheitMatch = !filters.einheit || card.einheit === filters.einheit;
-    const warnLevelMatch = !filters.warnLevel || card.warnLevel === filters.warnLevel;
+  const filteredCards = cards
+    .filter((card) => {
+      const nameMatch = card.name.toLowerCase().includes(filters.name.toLowerCase());
+      const kategorieMatch = !filters.kategorie || card.kategorie === filters.kategorie;
+      const einheitMatch = !filters.einheit || card.einheit === filters.einheit;
+      const warnLevelMatch = !filters.warnLevel || card.warnLevel === filters.warnLevel;
 
-    const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
-    const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
+      const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
+      const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
 
-    const ablaufBisMatch =
-      !filters.ablaufBis ||
-      ablaufDate <
-        new Date(
-          filters.ablaufBis.getFullYear(),
-          filters.ablaufBis.getMonth(),
-          filters.ablaufBis.getDate() + 1
-        );
+      const ablaufBisMatch =
+        !filters.ablaufBis ||
+        ablaufDate <
+          new Date(
+            filters.ablaufBis.getFullYear(),
+            filters.ablaufBis.getMonth(),
+            filters.ablaufBis.getDate() + 1
+          );
 
-    const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
-    const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;
+      const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
+      const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;
 
-    return (
-      nameMatch &&
-      kategorieMatch &&
-      einheitMatch &&
-      warnLevelMatch &&
-      ablaufVonMatch &&
-      ablaufBisMatch &&
-      mengeVonMatch &&
-      mengeBisMatch
-    );
-  });
+      return (
+        nameMatch &&
+        kategorieMatch &&
+        einheitMatch &&
+        warnLevelMatch &&
+        ablaufVonMatch &&
+        ablaufBisMatch &&
+        mengeVonMatch &&
+        mengeBisMatch
+      );
+    })
+    .sort((a, b) => {
+      const aExp = parseAblauf(a.ablaufdatum);
+      const bExp = parseAblauf(b.ablaufdatum);
+
+      if (filters.sort === 'expiry_desc') {
+        // Längst haltbar zuerst
+        return bExp - aExp;
+      }
+
+      // Default: Abgelaufen/Bald zuerst
+      const aP = warnPriority[a.warnLevel ?? WarnLevel.OK] ?? 99;
+      const bP = warnPriority[b.warnLevel ?? WarnLevel.OK] ?? 99;
+
+      if (aP !== bP) {
+        return aP - bP;
+      }
+      return aExp - bExp; // innerhalb gleicher Warnstufe: früheres Ablaufdatum zuerst
+    });
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -243,6 +274,30 @@ export default function DndGrid() {
 
   return (
     <Stack>
+      <SpeechCreateModal
+        opened={speechOpen}
+        onClose={() => setSpeechOpen(false)}
+        onApply={({ parsed }) => {
+          // Extra-sicher: falls mal "liter" etc. durchrutscht, normalisieren wir minimal
+          const unit = (parsed.einheit ?? 'Stk').trim();
+          const cat = (parsed.kategorie ?? '').trim();
+
+          setEditingCard({
+            id: crypto.randomUUID(),
+            name: (parsed.name ?? '').trim(),
+            menge: Number(parsed.menge ?? 1),
+            einheit: unit || 'Stk',
+            kategorie: cat,
+            ablaufdatum: parsed.ablaufdatum ?? formatDateToDisplay(new Date()),
+            erfasstAm: formatDateToDisplay(new Date()),
+            image: '',
+          });
+
+          setSpeechOpen(false);
+          setModalOpen(true); // öffnet dein bestehendes CardCreateModal vorbefüllt
+        }}
+      />
+
       <CardCreateModal
         opened={modalOpen}
         onClose={() => {
@@ -254,6 +309,9 @@ export default function DndGrid() {
       />
 
       <Group mt="md" justify="center">
+        <Button variant="outline" onClick={() => setSpeechOpen(true)}>
+          🎙️ Sprechen
+        </Button>
         <Button onClick={() => setModalOpen(true)}>
           {isMobile ? (
             <IconPlus size={18} />
@@ -284,18 +342,43 @@ export default function DndGrid() {
           setAbgelaufenAb={setWarnAbgelaufenAb}
         />
 
-        <TextInput
-          leftSection={<IconSearch size={16} />}
-          placeholder="Name suchen..."
-          value={filters.name || ''} // Fallback falls null
-          onChange={(e) => {
-            const val = e?.currentTarget?.value ?? '';
-            if (typeof val === 'string') {
-              setFilters((prev) => ({ ...prev, name: val }));
+        <Group gap="xs" wrap="nowrap">
+          <TextInput
+            leftSection={<IconSearch size={16} />}
+            placeholder="Name suchen..."
+            value={filters.name || ''}
+            onChange={(e) => {
+              const val = e?.currentTarget?.value ?? '';
+              if (typeof val === 'string') {
+                setFilters((prev) => ({ ...prev, name: val }));
+              }
+            }}
+            style={{ maxWidth: 600, minWidth: 300 }}
+          />
+
+          <Tooltip
+            label={
+              filters.sort === 'expiry_asc' ? 'Bald/abgelaufen zuerst' : 'Längst haltbar zuerst'
             }
-          }}
-          style={{ maxWidth: 600, minWidth: 300 }}
-        />
+          >
+            <ActionIcon
+              variant="default"
+              size="lg"
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  sort: prev.sort === 'expiry_asc' ? 'expiry_desc' : 'expiry_asc',
+                }))
+              }
+            >
+              {filters.sort === 'expiry_asc' ? (
+                <IconSortAscending size={18} />
+              ) : (
+                <IconSortDescending size={18} />
+              )}
+            </ActionIcon>
+          </Tooltip>
+        </Group>
       </Group>
 
       <Box

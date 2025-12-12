@@ -4259,74 +4259,74 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@next/bundle-analyzer@npm:^15.1.5":
-  version: 15.1.5
-  resolution: "@next/bundle-analyzer@npm:15.1.5"
+"@next/bundle-analyzer@npm:^15.1.9":
+  version: 15.5.9
+  resolution: "@next/bundle-analyzer@npm:15.5.9"
   dependencies:
     webpack-bundle-analyzer: "npm:4.10.1"
-  checksum: 10c0/5c6c7f35b603df4e6b5dde892357e35b53004bfb40d6c67ce88d8ff4b1da26992816b5a5fef4f8238694510eec2ddc7a60a9a28d19658654e0bfbfd8a93b65b0
+  checksum: 10c0/74a6e3766d5fed3141505210d40cf6220a52346e1ce47385ac6c78f27bfb66fd61cb8fb0141a9e69f841afad2c34caba06bd507310bc1723b2bca9cddbe1a81c
   languageName: node
   linkType: hard
 
-"@next/env@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/env@npm:15.1.5"
-  checksum: 10c0/bf6b8d6d87a88b6f8eba40d69192d2bde6d6ecee9dfcc779b383bf87c4efbf1de67b468a5b652225c32725192a644ac5175f51604f58ed094a2ef8e8c0f7a803
+"@next/env@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/env@npm:15.1.9"
+  checksum: 10c0/7b5315c6254296d3413d8730a1bb3217b42257cbe7d5abe285176ff6a9385594cacaca200b9501cc985e273fd32b2e8d9e622537a4de90c2eb4c0a44dcf38e3f
   languageName: node
   linkType: hard
 
-"@next/swc-darwin-arm64@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-darwin-arm64@npm:15.1.5"
+"@next/swc-darwin-arm64@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-darwin-arm64@npm:15.1.9"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@next/swc-darwin-x64@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-darwin-x64@npm:15.1.5"
+"@next/swc-darwin-x64@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-darwin-x64@npm:15.1.9"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@next/swc-linux-arm64-gnu@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-linux-arm64-gnu@npm:15.1.5"
+"@next/swc-linux-arm64-gnu@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-linux-arm64-gnu@npm:15.1.9"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@next/swc-linux-arm64-musl@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-linux-arm64-musl@npm:15.1.5"
+"@next/swc-linux-arm64-musl@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-linux-arm64-musl@npm:15.1.9"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@next/swc-linux-x64-gnu@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-linux-x64-gnu@npm:15.1.5"
+"@next/swc-linux-x64-gnu@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-linux-x64-gnu@npm:15.1.9"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@next/swc-linux-x64-musl@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-linux-x64-musl@npm:15.1.5"
+"@next/swc-linux-x64-musl@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-linux-x64-musl@npm:15.1.9"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
-"@next/swc-win32-arm64-msvc@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-win32-arm64-msvc@npm:15.1.5"
+"@next/swc-win32-arm64-msvc@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-win32-arm64-msvc@npm:15.1.9"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@next/swc-win32-x64-msvc@npm:15.1.5":
-  version: 15.1.5
-  resolution: "@next/swc-win32-x64-msvc@npm:15.1.5"
+"@next/swc-win32-x64-msvc@npm:15.1.9":
+  version: 15.1.9
+  resolution: "@next/swc-win32-x64-msvc@npm:15.1.9"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -13372,7 +13372,7 @@ __metadata:
     "@mantine/nprogress": "npm:^7.17.4"
     "@mantine/spotlight": "npm:^7.17.4"
     "@mantine/tiptap": "npm:^7.17.4"
-    "@next/bundle-analyzer": "npm:^15.1.5"
+    "@next/bundle-analyzer": "npm:^15.1.9"
     "@prisma/client": "npm:^6.5.0"
     "@storybook/nextjs": "npm:^8.5.0"
     "@storybook/react": "npm:^8.5.0"
@@ -13405,8 +13405,9 @@ __metadata:
     jest: "npm:^29.7.0"
     jest-environment-jsdom: "npm:^29.7.0"
     mysql2: "npm:^3.12.0"
-    next: "npm:15.1.5"
+    next: "npm:15.1.9"
     nodemailer: "npm:^6.10.0"
+    openai: "npm:^6.10.0"
     postcss: "npm:^8.5.1"
     postcss-preset-mantine: "npm:1.17.0"
     postcss-simple-vars: "npm:^7.0.1"
@@ -13905,19 +13906,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"next@npm:15.1.5":
-  version: 15.1.5
-  resolution: "next@npm:15.1.5"
+"next@npm:15.1.9":
+  version: 15.1.9
+  resolution: "next@npm:15.1.9"
   dependencies:
-    "@next/env": "npm:15.1.5"
-    "@next/swc-darwin-arm64": "npm:15.1.5"
-    "@next/swc-darwin-x64": "npm:15.1.5"
-    "@next/swc-linux-arm64-gnu": "npm:15.1.5"
-    "@next/swc-linux-arm64-musl": "npm:15.1.5"
-    "@next/swc-linux-x64-gnu": "npm:15.1.5"
-    "@next/swc-linux-x64-musl": "npm:15.1.5"
-    "@next/swc-win32-arm64-msvc": "npm:15.1.5"
-    "@next/swc-win32-x64-msvc": "npm:15.1.5"
+    "@next/env": "npm:15.1.9"
+    "@next/swc-darwin-arm64": "npm:15.1.9"
+    "@next/swc-darwin-x64": "npm:15.1.9"
+    "@next/swc-linux-arm64-gnu": "npm:15.1.9"
+    "@next/swc-linux-arm64-musl": "npm:15.1.9"
+    "@next/swc-linux-x64-gnu": "npm:15.1.9"
+    "@next/swc-linux-x64-musl": "npm:15.1.9"
+    "@next/swc-win32-arm64-msvc": "npm:15.1.9"
+    "@next/swc-win32-x64-msvc": "npm:15.1.9"
     "@swc/counter": "npm:0.1.3"
     "@swc/helpers": "npm:0.5.15"
     busboy: "npm:1.6.0"
@@ -13962,7 +13963,7 @@ __metadata:
       optional: true
   bin:
     next: dist/bin/next
-  checksum: 10c0/13e0001dfb1b36a191fc5cf12ff73b8b472a0271460609be948371ef8fa865873753801823a751aca785f2eb626ac5e6ae38e961d3e1c45237e40d92d5335637
+  checksum: 10c0/97c3a93defb88a057eb2f8a41d1a3cb2d99cf9b618f48130e267dc63fc4ea41950ef7ec2ceacd5a59838d4611e308eb5721015ccc4a7c65b8ca3589f234a9c3e
   languageName: node
   linkType: hard
 
@@ -14363,6 +14364,23 @@ __metadata:
     is-docker: "npm:^2.1.1"
     is-wsl: "npm:^2.2.0"
   checksum: 10c0/bb6b3a58401dacdb0aad14360626faf3fb7fba4b77816b373495988b724fb48941cad80c1b65d62bb31a17609b2cd91c41a181602caea597ca80dfbcc27e84c9
+  languageName: node
+  linkType: hard
+
+"openai@npm:^6.10.0":
+  version: 6.10.0
+  resolution: "openai@npm:6.10.0"
+  peerDependencies:
+    ws: ^8.18.0
+    zod: ^3.25 || ^4.0
+  peerDependenciesMeta:
+    ws:
+      optional: true
+    zod:
+      optional: true
+  bin:
+    openai: bin/cli
+  checksum: 10c0/09f48d7fd4cdc580a2ff8aa67f744373c2e30b5cebc890428a740a134c7bb3ea64113a4d417da96945c3ecfc7e317e78f9a364f93981e65b0aaa7a07b7a45277
   languageName: node
   linkType: hard
 

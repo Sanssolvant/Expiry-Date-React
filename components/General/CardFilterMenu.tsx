@@ -112,6 +112,7 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
                   ablaufBis: null,
                   mengeVon: null,
                   mengeBis: null,
+                  sort: 'expiry_asc',
                 })
               }
             >

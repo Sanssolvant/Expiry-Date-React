@@ -80,10 +80,10 @@ export function LoginForm() {
 
   return (
     <div className={classes.wrapper}>
-      {success === 'true' && <NotificationElementSuccess text={text} />}
-      {success === 'false' && <NotificationElementError text={text} />}
       <div className={classes.form}>
         <Paper className={classes.form} radius={0} p={30}>
+          {success === 'true' && <NotificationElementSuccess text={text} />}
+          {success === 'false' && <NotificationElementError text={text} />}
           <Title order={2} className={classes.title} ta="center" mt="md" mb={20}>
             Willkommen auf{' '}
             <Text
