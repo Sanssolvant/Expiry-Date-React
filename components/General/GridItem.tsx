@@ -41,7 +41,7 @@ export function GridItem({
       style={{
         cursor: isDragging ? 'grabbing' : 'grab',
         width: '100%',
-        height: 270,
+        height: 300,
         display: 'flex',
       }}
     >
@@ -93,7 +93,7 @@ export function GridItem({
 
         {/* Inhalt */}
         <div style={{ flexGrow: 1 }}>
-          <Text fw={600} size="sm" lineClamp={1}>
+          <Text fw={600} size="sm" lineClamp={2}>
             {name}
           </Text>
 

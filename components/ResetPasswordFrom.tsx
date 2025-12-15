@@ -9,6 +9,7 @@ import { Logo } from './General/Logo';
 import { NotificationElementError } from './General/NotificationElementError';
 import { PasswordConfirmField } from './General/PasswordConfirmField';
 import { PasswordField } from './General/PasswordField';
+import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -81,11 +82,11 @@ export function ResetPasswordForm() {
           setLoading(true);
         },
         onSuccess: () => {
-          router.push('/?success=true&reset=true');
+          router.push(AUTH_REDIRECTS.PASSWORD_RESET_SUCCESS);
         },
         onError: () => {
           setLoading(false);
-          setText('Da ist etwas schief gelaufen');
+          router.push(AUTH_REDIRECTS.ERROR_GENERIC);
         },
       }
     );

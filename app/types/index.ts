@@ -23,6 +23,7 @@ export const kategorien = [
   'Tiefkühl',
   'Konserve',
   'Getreide',
+  'Flüssigkeit',
 ] as const;
 
 export const einheiten = ['Stk', 'g', 'kg', 'ml', 'L', 'Packung'] as const;

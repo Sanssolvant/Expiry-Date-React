@@ -12,15 +12,15 @@ import { NotificationElementError } from './General/NotificationElementError';
 import { PasswordConfirmField } from './General/PasswordConfirmField';
 import { PasswordField } from './General/PasswordField';
 import { UsernameField } from './General/UsernameField';
+import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
+import { useAuthStatusMessage } from '@/app/lib/useAuthStatusMessage';
 
 export function RegisterForm() {
   const router = useRouter();
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  const searchParams = useSearchParams(); // Zugriff auf die Query-Parameter
-  const success = searchParams.get('success'); // Hole den `success`-Query-Parameter // Abfrage des `success`-Parameters aus der URL
   const [loading, setLoading] = useState(false);
-  const [text, setText] = useState('');
+  const { type, text } = useAuthStatusMessage();
 
   const form = useForm({
     initialValues: {
@@ -54,25 +54,22 @@ export function RegisterForm() {
         email: form.values.email,
         password: form.values.password,
         name: form.values.username,
+        username: form.values.username,
       },
       {
         onRequest: () => {
           setLoading(true);
         },
         onSuccess: () => {
-          router.push('/?success=true');
+          router.push(AUTH_REDIRECTS.REGISTER_SUCCESS);
         },
         onError: (ctx) => {
           setLoading(false);
-          //Email schon vorhanden
-          if (ctx.error.status === 422) {
-            setText(
-              'Registrierung fehlgeschlagen. Bitte versuche es erneut oder verwende eine andere E-Mail-Adresse.'
-            );
+          if (ctx?.error?.status === 422) {
+            router.push(AUTH_REDIRECTS.REGISTER_ERROR_USER_ALREADY_EXISTS);
           } else {
-            setText('Fehler während Registrierungsvorgang');
+            router.push(AUTH_REDIRECTS.REGISTER_GENERIC_ERROR);
           }
-          router.push('/register?success=false');
         },
       }
     );
@@ -81,7 +78,7 @@ export function RegisterForm() {
   return (
     <AppShell header={{ height: '4.5rem' }}>
       <AppShell.Header>
-        {success === 'false' && <NotificationElementError text={text} />}
+        {type === 'error' && <NotificationElementError text={text} />}
         <Container fluid p={0} style={{ height: '100%', alignContent: 'center' }}>
           <Flex align="center" justify="space-between">
             <Logo />

@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { nextCookies } from 'better-auth/next-js';
-import { openAPI } from 'better-auth/plugins';
+import { openAPI, username } from 'better-auth/plugins';
 import { sendEmail } from './send-email';
 
 const prisma = new PrismaClient();
@@ -16,7 +16,7 @@ export const auth = betterAuth({
     autoSignIn: false,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, token }) => {
-      const verificationUrl = `${process.env.BETTER_AUTH_URL}/reset-password?token=${token}`;
+      const verificationUrl = `${process.env.URL}/reset-password?token=${token}`;
       await sendEmail({
         to: user.email,
         subject: 'Änderung Ihres Passworts',
@@ -24,11 +24,11 @@ export const auth = betterAuth({
       });
     },
   },
-  plugins: [openAPI(), nextCookies()],
+  plugins: [openAPI(), nextCookies(), username()],
   emailVerification: {
     sendOnSignUp: true,
     sendVerificationEmail: async ({ user, token }) => {
-      const verificationUrl = `${process.env.BETTER_AUTH_URL}/api/auth/verify-email?token=${token}&callbackURL=${process.env.EMAIL_VERIFICATION_CALLBACK_URL}`;
+      const verificationUrl = `${process.env.URL}/api/auth/verify-email?token=${token}&callbackURL=${process.env.EMAIL_VERIFICATION_CALLBACK_URL}`;
       await sendEmail({
         to: user.email,
         subject: 'Bestätige deine E-Mail-Adresse',
@@ -41,5 +41,8 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
     cookieCache: { enabled: true }, // nur bei Bedarf
   },
-  trustedOrigins: ['192.168.1.148://'],
+  trustedOrigins: ["http://localhost:3000",
+  "http://192.168.1.184:3000",
+  "https://trackshelf.dev",
+  "https://melinda-unappreciated-rory.ngrok-free.dev",],
 });

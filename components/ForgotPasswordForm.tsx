@@ -10,6 +10,7 @@ import { EmailField } from './General/EmailField';
 import { Logo } from './General/Logo';
 import { NotificationElementError } from './General/NotificationElementError';
 import { NotificationElementSuccess } from './General/NotificationElementSuccess';
+import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
 
 export function ForgotPasswordForm() {
   const router = useRouter();
@@ -45,12 +46,11 @@ export function ForgotPasswordForm() {
         },
         onSuccess: () => {
           setLoading(false);
-          setText('Erfolgreich versendet');
-          router.push('/forgot-password?success=true');
+          router.push(AUTH_REDIRECTS.FORGOT_PASSWORD_SUCCESS);
         },
         onError: () => {
           setLoading(false);
-          setText('Da ist etwas schief gelaufen');
+          router.push(AUTH_REDIRECTS.ERROR_GENERIC);
         },
       }
     );
@@ -59,8 +59,6 @@ export function ForgotPasswordForm() {
   return (
     <AppShell header={{ height: '4.5rem' }}>
       <AppShell.Header>
-        {success === 'false' && <NotificationElementError text={text} />}
-        {success === 'true' && <NotificationElementSuccess text={text} />}
         <Container fluid p={0} style={{ height: '100%', alignContent: 'center' }}>
           <Flex align="center" justify="space-between">
             <Logo />

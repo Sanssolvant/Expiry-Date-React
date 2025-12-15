@@ -1,90 +1,104 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Anchor, Button, Paper, Text, Title } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
+
 import { authClient } from '@/app/lib/auth-client';
+import { useAuthStatusMessage } from '@/app/lib/useAuthStatusMessage';
+
 import { CheckboxLogin } from './General/CheckboxLogin';
-import { EmailFieldLogin } from './General/EmailFieldLogin';
+import { IdentifierFieldLogin } from './General/IdentifierFieldLogin';
+import { PasswordFieldLogin } from './General/PasswordFieldLogin';
 import { NotificationElementError } from './General/NotificationElementError';
 import { NotificationElementSuccess } from './General/NotificationElementSuccess';
-import { PasswordFieldLogin } from './General/PasswordFieldLogin';
+
 import classes from './loginform.module.css';
+import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
 
 export function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // Zugriff auf die Query-Parameter
-  const success = searchParams.get('success');
-  const reset = searchParams.get('reset'); // Hole den `success`-Query-Parameter // Abfrage des `success`-Parameters aus der URL
+  const { type, text } = useAuthStatusMessage();
   const [loading, setLoading] = useState(false);
-  const [text, setText] = useState('');
 
   const form = useForm({
     initialValues: {
-      email: '',
+      identifier: '',
       password: '',
       checkbox: false,
     },
     validate: {
-      email: isEmail('Ungültige E-Mail-Adresse'),
+      identifier: (value) => {
+        const v = (value ?? '').trim();
+        if (v.length < 2) return 'Bitte Benutzername oder E-Mail eingeben';
+
+        if (v.includes('@')) {
+          return isEmail('Ungültige E-Mail-Adresse')(v);
+        }
+
+        if (v.length < 2 || v.length > 10) {
+          return 'Ungültiger Benutzername (2–10 Zeichen)';
+        }
+
+        return null;
+      },
     },
   });
 
-  useEffect(() => {
-    if (success === 'true' && reset === 'true') {
-      setText('Passwort erfolgreich geändert');
-    } else if (success !== 'false') {
-      setText(
-        'Erfolgreich registriert! Bitte verifiziere deine E-Mail, um dich anmelden zu können.'
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (form.validate().hasErrors) return;
+
+    const identifier = form.values.identifier.trim();
+    const password = form.values.password;
+
+    const onError = (ctx: any) => {
+      setLoading(false);
+
+      if (ctx?.error?.status === 403) {
+        router.push(AUTH_REDIRECTS.ERROR_EMAIL_NOT_VERIFIED);
+      } else {
+        router.push(AUTH_REDIRECTS.ERROR_INVALID_CREDENTIALS);
+      }
+    };
+
+    const onSuccess = () => {
+      router.push('/dashboard');
+    };
+
+    setLoading(true);
+
+    if (identifier.includes('@')) {
+      await authClient.signIn.email(
+        {
+          email: identifier,
+          password,
+          rememberMe: form.values.checkbox,
+        },
+        { onSuccess, onError }
+      );
+    } else {
+      await authClient.signIn.username(
+        {
+          username: identifier,
+          password,
+          rememberMe: form.values.checkbox,
+        },
+        { onSuccess, onError }
       );
     }
-  }, [success, reset]);
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault(); // Verhindert das automatische Absenden des Formulars
-
-    if (form.validate().hasErrors) {
-      return;
-    }
-
-    await authClient.signIn.email(
-      {
-        email: form.values.email,
-        password: form.values.password,
-        /**
-         * remember the user session after the browser is closed.
-         * @default true
-         */
-        rememberMe: form.values.checkbox,
-      },
-      {
-        onRequest: () => {
-          setLoading(true);
-        },
-        onSuccess: () => {
-          router.push('/dashboard');
-        },
-        onError: (ctx) => {
-          setLoading(false);
-          router.push('/?success=false');
-          if (ctx.error.status === 403) {
-            setText('Email noch nicht verifiziert');
-          } else {
-            setText('Logindaten nicht korrekt');
-          }
-        },
-      }
-    );
   };
 
   return (
     <div className={classes.wrapper}>
       <div className={classes.form}>
-        <Paper className={classes.form} radius={0} p={30}>
-          {success === 'true' && <NotificationElementSuccess text={text} />}
-          {success === 'false' && <NotificationElementError text={text} />}
-          <Title order={2} className={classes.title} ta="center" mt="md" mb={20}>
+        <Paper radius={0} p={30}>
+          {type === 'success' && <NotificationElementSuccess text={text} />}
+          {type === 'error' && <NotificationElementError text={text} />}
+
+          <Title order={2} ta="center" mt="md" mb={20}>
             Willkommen auf{' '}
             <Text
               inherit
@@ -93,25 +107,29 @@ export function LoginForm() {
               gradient={{ from: 'blue', to: 'cyan' }}
             >
               TrackShelf
-            </Text>{' '}
+            </Text>
             !
           </Title>
+
           <form onSubmit={handleSubmit} className={classes.formular}>
-            <EmailFieldLogin form={form} />
+            <IdentifierFieldLogin form={form} />
             <PasswordFieldLogin form={form} />
             <CheckboxLogin form={form} />
+
             <Button loading={loading} fullWidth mt="xl" size="md" type="submit">
               Anmelden
             </Button>
           </form>
+
           <Text ta="center" mt="md">
             Kein Account?{' '}
-            <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/register')}>
+            <Anchor fw={700} onClick={() => router.push('/register')}>
               Registrieren
             </Anchor>
           </Text>
+
           <Text ta="center" mt="sm">
-            <Anchor<'a'> href="#" fw={700} onClick={() => router.push('/forgot-password')}>
+            <Anchor fw={700} onClick={() => router.push('/forgot-password')}>
               Passwort vergessen?
             </Anchor>
           </Text>

@@ -139,7 +139,8 @@ trackShelf_DB_Neu.sql
 !/uploads/.gitkeep
 /public/images
 /uploads/*
-
+.me
+.txt
 
 
 docker-compose.yml

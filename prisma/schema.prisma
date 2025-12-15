@@ -14,24 +14,28 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid()) @map("_id")
+  id            String        @id @default(cuid()) @map("_id")
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String        @unique
+  emailVerified Boolean       @default(false)
   image         String?
-  premium       Boolean   @default(false)
-  role          String    @default("user")
-  banned        Boolean   @default(false)
+  premium       Boolean       @default(false)
+  role          String        @default("user")
+  banned        Boolean       @default(false)
   banReason     String?
   banExpires    Int? /// Unix timestamp for ban expiration
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   sessions      Session[]
   accounts      Account[]
-  produkte      Produkt[] @relation("UserToProdukt")
+  produkte      Produkt[]     @relation("UserToProdukt")
   settings      UserSettings?
 
+  username        String?
+  displayUsername String? @db.Text
+
   @@map("user")
+  @@unique([username])
 }
 
 model Session {
@@ -82,9 +86,9 @@ model Verification {
 }
 
 model Produkt {
-  id          String       @id @default(cuid()) @map("_id")
+  id          String   @id @default(cuid()) @map("_id")
   userId      String
-  user        User      @relation("UserToProdukt", fields: [userId], references: [id])
+  user        User     @relation("UserToProdukt", fields: [userId], references: [id])
   name        String
   menge       Float
   einheit     String
@@ -92,17 +96,17 @@ model Produkt {
   erfasstAm   DateTime
   kategorie   String
   bildUrl     String
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
   @@map("produkt")
 }
 
 model UserSettings {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  warnLevelBald   Int      @default(3)  // z.B. 3 Tage
-  warnLevelExpired Int     @default(0)  // z.B. 0 Tage = abgelaufen
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String @id @default(cuid())
+  userId           String @unique
+  warnLevelBald    Int    @default(3) // z.B. 3 Tage
+  warnLevelExpired Int    @default(0) // z.B. 0 Tage = abgelaufen
+  user             User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("userSettings")
 }

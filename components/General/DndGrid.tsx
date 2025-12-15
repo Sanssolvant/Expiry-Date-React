@@ -43,6 +43,7 @@ import { CardFilterMenu } from './CardFilterMenu';
 import { GridItem } from './GridItem';
 import { SettingsMenu } from './SettingsMenu';
 import { SpeechCreateModal } from './SpeechCreateModal';
+import { ColorSchemeToggle } from './ColorSchemeToggle';
 
 export type CardData = {
   id: string;
@@ -161,11 +162,11 @@ export default function DndGrid() {
       const ablaufBisMatch =
         !filters.ablaufBis ||
         ablaufDate <
-          new Date(
-            filters.ablaufBis.getFullYear(),
-            filters.ablaufBis.getMonth(),
-            filters.ablaufBis.getDate() + 1
-          );
+        new Date(
+          filters.ablaufBis.getFullYear(),
+          filters.ablaufBis.getMonth(),
+          filters.ablaufBis.getDate() + 1
+        );
 
       const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
       const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;
@@ -212,20 +213,48 @@ export default function DndGrid() {
     }
   };
 
-  const handleCreateCard = (card: CardData) => {
+  const handleCreateCard = async (card: CardData) => {
     const { warnLevel, ...cardWithoutWarn } = card;
 
+    // 1) neue Liste berechnen (wichtig, weil setState async ist)
     const exists = rawCards.find((c) => c.id === card.id);
-    if (exists) {
-      setRawCards((prev) => prev.map((c) => (c.id === card.id ? cardWithoutWarn : c)));
-    } else {
-      setRawCards((prev) => [...prev, cardWithoutWarn]);
-    }
+
+    const nextRawCards = exists
+      ? rawCards.map((c) => (c.id === card.id ? cardWithoutWarn : c))
+      : [...rawCards, cardWithoutWarn];
+
+    // 2) UI sofort updaten
+    setRawCards(nextRawCards);
     setEditingCard(null);
+
+    // 3) Auto-Save (silent = true -> keine "Gespeichert"-Spam-Toast)
+    try {
+      await saveCardsToDB(nextRawCards, true);
+    } catch (e) {
+      notifications.show({
+        title: 'Auto-Speichern fehlgeschlagen',
+        message: 'Bitte Verbindung prüfen oder später „Alle speichern“ drücken.',
+        color: 'red',
+        icon: <IconX size={18} />,
+      });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setRawCards((prev) => prev.filter((card) => card.id !== id));
+
+  const handleDelete = async (id: string) => {
+    const nextRawCards = rawCards.filter((card) => card.id !== id);
+    setRawCards(nextRawCards);
+
+    try {
+      await saveCardsToDB(nextRawCards, true);
+    } catch {
+      notifications.show({
+        title: 'Auto-Speichern fehlgeschlagen',
+        message: 'Löschen wurde lokal übernommen. Bitte später „Alle speichern“ drücken.',
+        color: 'red',
+        icon: <IconX size={18} />,
+      });
+    }
   };
 
   const handleCardClick = (card: CardData) => {
@@ -237,39 +266,51 @@ export default function DndGrid() {
     return null;
   }
 
-  const handleSave = async () => {
-    setLoading(true);
-
-    const payload = cards.map(({ warnLevel, ...rest }) => rest);
-
+  const saveCardsToDB = async (cardsToSave: Omit<CardData, 'warnLevel'>[], silent = false) => {
     const res = await fetch('/api/save-products', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include', // 🔐 Damit Session gesendet wird!
-      body: JSON.stringify({ cards: payload }),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ cards: cardsToSave }),
     });
 
-    if (res.ok) {
-      const result = await res.json();
+    if (!res.ok) {
+      if (!silent) {
+        notifications.show({
+          title: 'Fehler beim Speichern',
+          message: 'Unbekannter Fehler beim Speichern',
+          color: 'red',
+          icon: <IconX size={18} />,
+        });
+      }
+      throw new Error('save-products failed');
+    }
 
+    // optional: nur bei manuellem Save eine Toast
+    if (!silent) {
+      const result = await res.json();
       notifications.show({
         title: 'Gespeichert',
         message: `${result.count ?? 'Alle'} Karten wurden erfolgreich gespeichert.`,
         color: 'teal',
         icon: <IconCheck size={18} />,
       });
-    } else {
-      notifications.show({
-        title: 'Fehler beim Speichern',
-        message: 'Unbekannter Fehler beim Speichern',
-        color: 'red',
-        icon: <IconX size={18} />,
-      });
     }
 
-    setLoading(false);
+    return true;
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+
+    try {
+      const payload = cards.map(({ warnLevel, ...rest }) => rest);
+      await saveCardsToDB(payload, false); // false = Toast anzeigen
+    } catch (e) {
+      // Fehler-Toast kommt in saveCardsToDB (silent=false)
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -308,78 +349,94 @@ export default function DndGrid() {
         initialData={editingCard}
       />
 
-      <Group mt="md" justify="center">
-        <Button variant="outline" onClick={() => setSpeechOpen(true)}>
-          🎙️ Sprechen
-        </Button>
-        <Button onClick={() => setModalOpen(true)}>
-          {isMobile ? (
-            <IconPlus size={18} />
-          ) : (
-            <>
-              {' '}
-              <IconPlus size={18} style={{ marginRight: 10 }} /> Karte hinzufügen{' '}
-            </>
-          )}
-        </Button>
+      <Box
+        mt="md"
+        style={{
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <Group
+          justify="center"
+          wrap="nowrap"
+          gap="xs"
+          style={{
+            flexWrap: 'nowrap',
+            minWidth: 'max-content',
+          }}
+        >
+          <Button variant="outline" onClick={() => setSpeechOpen(true)}>
+            🎙️
+          </Button>
 
-        <Button onClick={handleSave} color="green" variant="outline" loading={loading}>
-          {isMobile ? (
-            <IconDeviceFloppy size={18} />
-          ) : (
-            <>
-              {' '}
-              <IconDeviceFloppy size={18} style={{ marginRight: 10 }} /> Alle speichern{' '}
-            </>
-          )}
-        </Button>
-        <CardFilterMenu iconOnly={isMobile} filters={filters} setFilters={setFilters} />
-        <SettingsMenu
-          iconOnly={isMobile}
-          baldAb={warnBaldAb}
-          abgelaufenAb={warnAbgelaufenAb}
-          setBaldAb={setWarnBaldAb}
-          setAbgelaufenAb={setWarnAbgelaufenAb}
-        />
+          <Button onClick={() => setModalOpen(true)}>
+            {isMobile ? (
+              <IconPlus size={18} />
+            ) : (
+              <>
+                <IconPlus size={18} style={{ marginRight: 10 }} /> Karte hinzufügen
+              </>
+            )}
+          </Button>
 
-        <Group gap="xs" wrap="nowrap">
-          <TextInput
-            leftSection={<IconSearch size={16} />}
-            placeholder="Name suchen..."
-            value={filters.name || ''}
-            onChange={(e) => {
-              const val = e?.currentTarget?.value ?? '';
-              if (typeof val === 'string') {
-                setFilters((prev) => ({ ...prev, name: val }));
-              }
-            }}
-            style={{ maxWidth: 600, minWidth: 300 }}
+          <Button onClick={handleSave} color="green" variant="outline" loading={loading}>
+            {isMobile ? (
+              <IconDeviceFloppy size={18} />
+            ) : (
+              <>
+                <IconDeviceFloppy size={18} style={{ marginRight: 10 }} /> Alle speichern
+              </>
+            )}
+          </Button>
+
+          <CardFilterMenu iconOnly={isMobile} filters={filters} setFilters={setFilters} />
+
+          <SettingsMenu
+            iconOnly={isMobile}
+            baldAb={warnBaldAb}
+            abgelaufenAb={warnAbgelaufenAb}
+            setBaldAb={setWarnBaldAb}
+            setAbgelaufenAb={setWarnAbgelaufenAb}
           />
 
-          <Tooltip
-            label={
-              filters.sort === 'expiry_asc' ? 'Bald/abgelaufen zuerst' : 'Längst haltbar zuerst'
-            }
-          >
-            <ActionIcon
-              variant="default"
-              size="lg"
-              onClick={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  sort: prev.sort === 'expiry_asc' ? 'expiry_desc' : 'expiry_asc',
-                }))
-              }
+          <Group gap="xs" wrap="nowrap">
+            <TextInput
+              leftSection={<IconSearch size={16} />}
+              placeholder="Name suchen..."
+              value={filters.name || ''}
+              onChange={(e) => {
+                const val = e?.currentTarget?.value ?? '';
+                if (typeof val === 'string') {
+                  setFilters((prev) => ({ ...prev, name: val }));
+                }
+              }}
+              style={{ width: isMobile ? 160 : 300 }}
+            />
+
+            <Tooltip
+              label={filters.sort === 'expiry_asc' ? 'Bald/abgelaufen zuerst' : 'Längst haltbar zuerst'}
             >
-              {filters.sort === 'expiry_asc' ? (
-                <IconSortAscending size={18} />
-              ) : (
-                <IconSortDescending size={18} />
-              )}
-            </ActionIcon>
-          </Tooltip>
+              <ActionIcon
+                variant="default"
+                size="lg"
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    sort: prev.sort === 'expiry_asc' ? 'expiry_desc' : 'expiry_asc',
+                  }))
+                }
+              >
+                {filters.sort === 'expiry_asc' ? (
+                  <IconSortAscending size={18} />
+                ) : (
+                  <IconSortDescending size={18} />
+                )}
+              </ActionIcon>
+            </Tooltip>
+            <ColorSchemeToggle />
+          </Group>
         </Group>
-      </Group>
+      </Box>
 
       <Box
         p="md"

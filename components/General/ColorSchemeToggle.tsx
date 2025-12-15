@@ -1,23 +1,34 @@
 'use client';
 
-import React from 'react';
+import { useEffect, useState } from 'react';
+import { ActionIcon, Tooltip, useMantineColorScheme } from '@mantine/core';
 import { IconMoonStars, IconSun } from '@tabler/icons-react';
-import { Group, Switch, useMantineColorScheme } from '@mantine/core';
 
 export function ColorSchemeToggle() {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // Wichtig: vor Mount nichts rendern, was je nach colorScheme anders aussieht
+  if (!mounted) {
+    return (
+      <ActionIcon variant="default" size="lg" aria-label="Toggle color scheme" />
+    );
+  }
+
   const dark = colorScheme === 'dark';
 
   return (
-    <Group style={{ position: 'absolute', bottom: '1.5rem', right: '1.5rem', zIndex: 10 }}>
-      <Switch
-        checked={colorScheme === 'dark'}
-        onClick={() => toggleColorScheme()}
+    <Tooltip label={dark ? 'Light Mode' : 'Dark Mode'}>
+      <ActionIcon
+        variant="default"
         size="lg"
-        color={dark ? '#1C7ED6' : 'dark'}
-        onLabel={<IconSun size="1rem" stroke={2.5} color="yellow" />}
-        offLabel={<IconMoonStars size="1rem" stroke={2.5} color="#1C7ED6" />}
-      />
-    </Group>
+        onClick={() => toggleColorScheme()}
+        aria-label="Toggle color scheme"
+      >
+        {dark ? <IconSun size={18} /> : <IconMoonStars size={18} />}
+      </ActionIcon>
+    </Tooltip>
   );
 }
