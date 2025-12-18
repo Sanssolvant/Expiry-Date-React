@@ -1,0 +1,21 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
+
+# Yarn 4 Dateien zuerst rein
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY .yarn ./.yarn
+
+RUN corepack enable
+
+# Yarn 4: immutable
+RUN yarn install --immutable
+
+# SWC für glibc/gnu vorinstallieren (optional, aber sehr stabil)
+RUN yarn add -D @next/swc-linux-x64-gnu
+
+COPY . .
+
+EXPOSE 3000

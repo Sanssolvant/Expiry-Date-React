@@ -1,0 +1,71 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: trackshelf-dev-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: trackShelf
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data-dev:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [trackshelf-dev]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: trackshelf-dev-app
+    env_file:
+      - .env.docker.dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./:/app
+      - node_modules_dev:/app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+    command: >
+      sh -lc '
+        if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
+          yarn install --immutable;
+        fi;
+        yarn prisma generate &&
+        yarn prisma migrate deploy &&
+        yarn dev -H 0.0.0.0 -p 3000
+      '
+    networks: [trackshelf-dev]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: trackshelf-dev-tunnel
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - ${CLOUDFLARED_TOKEN_DEV}
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [trackshelf-dev]
+
+volumes:
+  mysql-data-dev:
+  node_modules_dev:
+
+networks:
+  trackshelf-dev:
+    driver: bridge

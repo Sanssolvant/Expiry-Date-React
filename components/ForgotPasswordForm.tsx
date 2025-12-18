@@ -8,8 +8,6 @@ import { isEmail, useForm } from '@mantine/form';
 import { authClient } from '@/app/lib/auth-client';
 import { EmailField } from './General/EmailField';
 import { Logo } from './General/Logo';
-import { NotificationElementError } from './General/NotificationElementError';
-import { NotificationElementSuccess } from './General/NotificationElementSuccess';
 import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
 
 export function ForgotPasswordForm() {
@@ -35,7 +33,7 @@ export function ForgotPasswordForm() {
       return;
     }
 
-    await authClient.forgetPassword(
+    await authClient.requestPasswordReset(
       {
         email: form.values.email,
         redirectTo: '/reset-password',
