@@ -24,6 +24,11 @@ export const kategorien = [
   'Konserve',
   'Getreide',
   'Flüssigkeit',
+  'Sonstiges',
+  'Backware',
+  'Süßigkeit',
+  'Nuss',
+  'Früchte',
 ] as const;
 
 export const einheiten = ['Stk', 'g', 'kg', 'ml', 'L', 'Packung'] as const;
