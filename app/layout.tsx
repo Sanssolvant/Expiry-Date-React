@@ -1,22 +1,25 @@
 import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 
 import React from 'react';
 import { ColorSchemeScript, mantineHtmlProps, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { theme } from '../theme';
-import '@mantine/notifications/styles.css';
 import { FloatingColorSchemeToggle } from '@/components/General/FloatingColorSchemeToggle';
+import '@mantine/dates/styles.css';
 
 export const metadata = {
   title: 'TrackShelf',
   description: 'Keep track of the expirydate of your items',
 };
 
-export default function RootLayout({ children }: { children: any }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" {...mantineHtmlProps}>
       <head>
-        <ColorSchemeScript />
+        {/* ✅ verhindert “Flash” / falsches Theme beim Reload */}
+        <ColorSchemeScript defaultColorScheme="dark" />
+
         <link rel="shortcut icon" href="/favicon.svg" />
         <meta
           name="viewport"
@@ -25,7 +28,8 @@ export default function RootLayout({ children }: { children: any }) {
       </head>
 
       <body>
-        <MantineProvider theme={theme}>
+        {/* ✅ sorgt ebenfalls für stabilen ersten Render */}
+        <MantineProvider theme={theme} defaultColorScheme="dark">
           <Notifications position="bottom-right" />
           <FloatingColorSchemeToggle />
           {children}

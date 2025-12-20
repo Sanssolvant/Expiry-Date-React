@@ -1,26 +1,49 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { IconArrowBack, IconSend } from '@tabler/icons-react';
-import { AppShell, Box, Button, Container, Flex, Group, Paper, Title } from '@mantine/core';
+import { useRouter } from 'next/navigation';
+import { IconArrowBack, IconUserPlus } from '@tabler/icons-react';
+import {
+  Anchor,
+  Box,
+  Button,
+  Divider,
+  Group,
+  Paper,
+  Stack,
+  Text,
+  Title,
+  ThemeIcon,
+  alpha,
+  useMantineColorScheme,
+  useMantineTheme,
+} from '@mantine/core';
 import { hasLength, isEmail, matches, useForm } from '@mantine/form';
+
 import { authClient } from '@/app/lib/auth-client';
+import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
+import { useAuthStatusMessage } from '@/app/lib/useAuthStatusMessage';
+
 import { EmailField } from './General/EmailField';
 import { Logo } from './General/Logo';
 import { NotificationElementError } from './General/NotificationElementError';
 import { PasswordConfirmField } from './General/PasswordConfirmField';
 import { PasswordField } from './General/PasswordField';
 import { UsernameField } from './General/UsernameField';
-import { AUTH_REDIRECTS } from '@/app/lib/authRedirects';
-import { useAuthStatusMessage } from '@/app/lib/useAuthStatusMessage';
+
+import classes from './registerform.module.css';
 
 export function RegisterForm() {
   const router = useRouter();
+  const theme = useMantineTheme();
+  const { colorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  const { type, text } = useAuthStatusMessage();
+
   const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { type, text } = useAuthStatusMessage();
 
   const form = useForm({
     initialValues: {
@@ -29,25 +52,24 @@ export function RegisterForm() {
       password: '',
     },
     validate: {
-      username: hasLength({ min: 2, max: 10 }, 'Ungültiger Benutzername (2-10 Zeichen)'),
+      username: hasLength({ min: 2, max: 10 }, 'Ungültiger Benutzername (2–10 Zeichen)'),
       email: isEmail('Ungültige E-Mail-Adresse'),
       password: matches(
         /^(?=(.*[0-9]))(?=(.*[a-z]))(?=(.*[A-Z]))(?=(.*[$&+,:;=?@#|'<>.^*()%!-]))[A-Za-z0-9$&+,:;=?@#|'<>.^*()%!-]{8,}$/,
-        'Ungültiges Passwort'
+        'Passwort muss mind. 8 Zeichen haben inkl. Gross-/Kleinbuchstaben, Zahl und Sonderzeichen'
       ),
     },
   });
 
   const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault(); // Verhindert das automatische Absenden des Formulars
+    event.preventDefault();
+
     if (form.values.password !== confirmPassword) {
-      setConfirmPasswordError('Passwort stimmt nicht überein');
+      setConfirmPasswordError('Passwörter stimmen nicht überein');
       return;
     }
 
-    if (form.validate().hasErrors) {
-      return;
-    }
+    if (form.validate().hasErrors) return;
 
     await authClient.signUp.email(
       {
@@ -57,12 +79,8 @@ export function RegisterForm() {
         username: form.values.username,
       },
       {
-        onRequest: () => {
-          setLoading(true);
-        },
-        onSuccess: () => {
-          router.push(AUTH_REDIRECTS.REGISTER_SUCCESS);
-        },
+        onRequest: () => setLoading(true),
+        onSuccess: () => router.push(AUTH_REDIRECTS.REGISTER_SUCCESS),
         onError: (ctx) => {
           setLoading(false);
           if (ctx?.error?.status === 422) {
@@ -75,37 +93,60 @@ export function RegisterForm() {
     );
   };
 
+  const surfaceBg = isDark ? alpha(theme.colors.dark[6], 0.55) : alpha(theme.white, 0.7);
+  const surfaceBorder = isDark ? alpha(theme.colors.dark[2], 0.35) : theme.colors.gray[3];
+
   return (
-    <AppShell header={{ height: '4.5rem' }}>
-      <AppShell.Header>
-        {type === 'error' && <NotificationElementError text={text} />}
-        <Container fluid p={0} style={{ height: '100%', alignContent: 'center' }}>
-          <Flex align="center" justify="space-between">
+    <div className={classes.wrapper}>
+      <div className={classes.formSide}>
+        <Paper
+          radius="xl"
+          p="xl"
+          className={classes.card}
+          style={{
+            background: surfaceBg,
+            border: `1px solid ${surfaceBorder}`,
+          }}
+        >
+          <Group justify="center" mb="sm">
             <Logo />
-          </Flex>
-        </Container>
-      </AppShell.Header>
-      <Flex
-        style={{ height: '100vh' }} // Volle Bildschirmhöhe
-        justify="center" // Horizontale Zentrierung
-        align="center" // Vertikale Zentrierung
-      >
-        <Container size={500}>
-          <Paper shadow="md" p="xl" radius="md" withBorder style={{ minWidth: 300 }}>
-            <Title order={3} mb="1.5rem" ta="center">
-              Registrieren
+          </Group>
+
+          {type === 'error' && <NotificationElementError text={text} />}
+
+          <Stack gap={6} mt={type ? 'sm' : 0} mb="md">
+            <Group justify="center">
+              <ThemeIcon radius="xl" variant="light" size={44}>
+                <IconUserPlus size={20} />
+              </ThemeIcon>
+            </Group>
+
+            <Title order={2} ta="center">
+              Account erstellen
             </Title>
-            <form onSubmit={handleSubmit}>
-              <Box mb="sm">
+
+            <Text ta="center" c="dimmed" size="sm">
+              Erstelle einen Account, um deine Produkte und Ablaufdaten zu speichern.
+            </Text>
+          </Stack>
+
+          <Divider my="lg" />
+
+          <form onSubmit={handleSubmit}>
+            <Stack gap="sm">
+              <Box>
                 <UsernameField form={form} />
               </Box>
-              <Box mb="sm">
+
+              <Box>
                 <EmailField form={form} />
               </Box>
-              <Box mb="sm">
+
+              <Box>
                 <PasswordField form={form} />
               </Box>
-              <Box mb="sm">
+
+              <Box>
                 <PasswordConfirmField
                   confirmPassword={confirmPassword}
                   setConfirmPassword={setConfirmPassword}
@@ -113,27 +154,35 @@ export function RegisterForm() {
                   setConfirmPasswordError={setConfirmPasswordError}
                 />
               </Box>
-              <Group justify="center" mt="md">
+
+              <Group justify="space-between" mt="xs" wrap="nowrap">
                 <Button
-                  leftSection={<IconArrowBack size={14} />}
-                  variant="light"
+                  leftSection={<IconArrowBack size={16} />}
+                  variant="default"
                   onClick={() => router.push('/')}
                 >
                   Zurück
                 </Button>
-                <Button
-                  loading={loading}
-                  rightSection={<IconSend size={14} />}
-                  variant="light"
-                  type="submit"
-                >
-                  Senden
+
+                <Button loading={loading} type="submit">
+                  Registrieren
                 </Button>
               </Group>
-            </form>
-          </Paper>
-        </Container>
-      </Flex>
-    </AppShell>
+
+              <Stack align="center" gap={4} mt="md">
+                <Text size="sm" c="dimmed">
+                  Schon ein Account?{' '}
+                  <Anchor fw={700} onClick={() => router.push('/')}>
+                    Anmelden
+                  </Anchor>
+                </Text>
+              </Stack>
+            </Stack>
+          </form>
+        </Paper>
+      </div>
+
+      <div className={classes.imageSide} />
+    </div>
   );
 }

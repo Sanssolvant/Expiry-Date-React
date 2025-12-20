@@ -3,20 +3,24 @@
   min-height: 100vh;
 }
 
-/* Linke Seite */
 .formSide {
   flex: 0 0 520px;
-  position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 28px;
+
+  /* wichtig: Form immer klickbar */
+  position: relative;
+  z-index: 2;
+
   border-right: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-7));
   background:
-    radial-gradient(900px 600px at 20% 10%,
+    radial-gradient(
+      900px 600px at 20% 10%,
       light-dark(rgba(34, 139, 230, 0.16), rgba(34, 139, 230, 0.10)),
-      transparent 60%),
+      transparent 60%
+    ),
     var(--mantine-color-body);
 }
 
@@ -27,39 +31,30 @@
   backdrop-filter: blur(10px);
 }
 
-.formular {
-  width: 100%;
-}
-
 /* Rechte Seite – Bild */
 .imageSide {
   flex: 1;
-  position: relative;           /* ✅ wichtig: damit ::after nur rechts wirkt */
+  position: relative;
   overflow: hidden;
 
   background-image: url('/img/hintergrund.png');
   background-repeat: no-repeat;
   background-position: center right;
-  background-size: cover;       /* ✅ wirkt “hero”, ohne den blauen Balken */
+  background-size: cover;
 
-  background-color: #0b3c5d;    /* fallback */
+  background-color: #0b3c5d;
+  pointer-events: none;
 }
 
-/* Overlay nur auf der rechten Seite */
 .imageSide::after {
   content: '';
   position: absolute;
   inset: 0;
-  pointer-events: none;         /* ✅ Overlay darf nie Klicks fressen */
-  background: linear-gradient(
-    to left,
-    rgba(0, 0, 0, 0.08),
-    rgba(0, 0, 0, 0.25)
-  );
+  pointer-events: none;
+  background: linear-gradient(to left, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.25));
 }
 
-
-/* 📱 Mobile */
+/* Mobile: Bild ausblenden */
 @media (max-width: 768px) {
   .wrapper {
     flex-direction: column;

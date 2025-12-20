@@ -14,6 +14,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   IconCheck,
   IconDeviceFloppy,
+  IconHandMove,
   IconPlus,
   IconSearch,
   IconSortAscending,
@@ -35,9 +36,12 @@ import {
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { parseAblauf, WarnLevel, warnPriority } from '@/app/types';
+import type { Filters } from '@/app/types';
+
 import { CardCreateModal } from './CardCreateModal';
 import { CardFilterMenu } from './CardFilterMenu';
 import { GridItem } from './GridItem';
@@ -61,28 +65,32 @@ export default function DndGrid() {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
+
   const [loading, setLoading] = useState(false);
   const [warnBaldAb, setWarnBaldAb] = useState(3);
   const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(0);
+
   const [rawCards, setRawCards] = useState<Omit<CardData, 'warnLevel'>[]>([]);
   const [speechOpen, setSpeechOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
-  const [filters, setFilters] = useState({
+
+  const [filters, setFilters] = useState<Filters>({
     name: '',
     kategorie: '',
     einheit: '',
     warnLevel: '',
-    ablaufVon: null as Date | null,
-    ablaufBis: null as Date | null,
+    ablaufVon: null,
+    ablaufBis: null,
     mengeVon: null,
     mengeBis: null,
-    sort: 'expiry_asc' as 'expiry_asc' | 'expiry_desc',
+    sort: 'manual',
   });
 
-  const isMobile = useMediaQuery('(max-width: 500px)'); // oder '(max-width: 768px)' je nach Wunsch
+  const isMobile = useMediaQuery('(max-width: 500px)');
 
   const cards = useMemo(() => {
     return rawCards.map((card) => ({
@@ -97,7 +105,6 @@ export default function DndGrid() {
     const loadCards = async () => {
       try {
         const res = await fetch('/api/load-products', { method: 'GET', credentials: 'include' });
-
         const data = await res.json();
 
         if (res.ok && data.produkte) {
@@ -127,19 +134,12 @@ export default function DndGrid() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const res = await fetch('/api/user-settings', {
-          method: 'GET',
-          credentials: 'include',
-        });
+        const res = await fetch('/api/user-settings', { method: 'GET', credentials: 'include' });
 
         if (res.ok) {
           const settings = await res.json();
-          if (settings.warnLevelBald != null) {
-            setWarnBaldAb(settings.warnLevelBald);
-          }
-          if (settings.warnLevelExpired != null) {
-            setWarnAbgelaufenAb(settings.warnLevelExpired);
-          }
+          if (settings.warnLevelBald != null) setWarnBaldAb(settings.warnLevelBald);
+          if (settings.warnLevelExpired != null) setWarnAbgelaufenAb(settings.warnLevelExpired);
         }
       } catch (error) {
         console.error('❌ Fehler beim Laden der Einstellungen:', error);
@@ -149,88 +149,123 @@ export default function DndGrid() {
     loadSettings();
   }, []);
 
-  const filteredCards = cards
-    .filter((card) => {
-      const nameMatch = card.name.toLowerCase().includes(filters.name.toLowerCase());
-      const kategorieMatch = !filters.kategorie || card.kategorie === filters.kategorie;
-      const einheitMatch = !filters.einheit || card.einheit === filters.einheit;
-      const warnLevelMatch = !filters.warnLevel || card.warnLevel === filters.warnLevel;
+  const filteredCards = useMemo(() => {
+    const result = cards
+      .filter((card) => {
+        const nameMatch = card.name.toLowerCase().includes(filters.name.toLowerCase());
+        const kategorieMatch = !filters.kategorie || card.kategorie === filters.kategorie;
+        const einheitMatch = !filters.einheit || card.einheit === filters.einheit;
+        const warnLevelMatch = !filters.warnLevel || card.warnLevel === filters.warnLevel;
 
-      const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
-      const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
+        const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
+        const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
 
-      const ablaufBisMatch =
-        !filters.ablaufBis ||
-        ablaufDate <
-        new Date(
-          filters.ablaufBis.getFullYear(),
-          filters.ablaufBis.getMonth(),
-          filters.ablaufBis.getDate() + 1
+        const ablaufBisMatch =
+          !filters.ablaufBis ||
+          ablaufDate <
+          new Date(
+            filters.ablaufBis.getFullYear(),
+            filters.ablaufBis.getMonth(),
+            filters.ablaufBis.getDate() + 1
+          );
+
+        const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
+        const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;
+
+        return (
+          nameMatch &&
+          kategorieMatch &&
+          einheitMatch &&
+          warnLevelMatch &&
+          ablaufVonMatch &&
+          ablaufBisMatch &&
+          mengeVonMatch &&
+          mengeBisMatch
         );
+      })
+      .sort((a, b) => {
+        // ✅ Manuell: Reihenfolge bleibt wie in rawCards
+        if (filters.sort === 'manual') return 0;
 
-      const mengeVonMatch = filters.mengeVon == null || card.menge >= filters.mengeVon;
-      const mengeBisMatch = filters.mengeBis == null || card.menge <= filters.mengeBis;
+        const aExp = parseAblauf(a.ablaufdatum);
+        const bExp = parseAblauf(b.ablaufdatum);
 
-      return (
-        nameMatch &&
-        kategorieMatch &&
-        einheitMatch &&
-        warnLevelMatch &&
-        ablaufVonMatch &&
-        ablaufBisMatch &&
-        mengeVonMatch &&
-        mengeBisMatch
-      );
-    })
-    .sort((a, b) => {
-      const aExp = parseAblauf(a.ablaufdatum);
-      const bExp = parseAblauf(b.ablaufdatum);
+        // expiry_desc: Längst haltbar zuerst
+        if (filters.sort === 'expiry_desc') return bExp - aExp;
 
-      if (filters.sort === 'expiry_desc') {
-        // Längst haltbar zuerst
-        return bExp - aExp;
-      }
+        // expiry_asc: Abgelaufen/Bald zuerst (Warnstufe), dann früheres Datum
+        const aP = warnPriority[a.warnLevel ?? WarnLevel.OK] ?? 99;
+        const bP = warnPriority[b.warnLevel ?? WarnLevel.OK] ?? 99;
 
-      // Default: Abgelaufen/Bald zuerst
-      const aP = warnPriority[a.warnLevel ?? WarnLevel.OK] ?? 99;
-      const bP = warnPriority[b.warnLevel ?? WarnLevel.OK] ?? 99;
+        if (aP !== bP) return aP - bP;
+        return aExp - bExp;
+      });
 
-      if (aP !== bP) {
-        return aP - bP;
-      }
-      return aExp - bExp; // innerhalb gleicher Warnstufe: früheres Ablaufdatum zuerst
-    });
+    return result;
+  }, [cards, filters]);
 
   const handleDragEnd = (event: DragEndEvent) => {
+    // ✅ Wenn Sortierung aktiv ist, lassen wir Drag nicht zu
+    if (filters.sort !== 'manual') return;
+
     const { active, over } = event;
-    if (!over || active.id === over.id) {
-      return;
-    }
+    if (!over || active.id === over.id) return;
+
     const oldIndex = cards.findIndex((c) => c.id === active.id);
     const newIndex = cards.findIndex((c) => c.id === over.id);
+
     if (oldIndex !== -1 && newIndex !== -1) {
       setRawCards((prev) => arrayMove(prev, oldIndex, newIndex));
     }
   };
 
+  const saveCardsToDB = async (cardsToSave: Omit<CardData, 'warnLevel'>[], silent = false) => {
+    const res = await fetch('/api/save-products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ cards: cardsToSave }),
+    });
+
+    if (!res.ok) {
+      if (!silent) {
+        notifications.show({
+          title: 'Fehler beim Speichern',
+          message: 'Unbekannter Fehler beim Speichern',
+          color: 'red',
+          icon: <IconX size={18} />,
+        });
+      }
+      throw new Error('save-products failed');
+    }
+
+    if (!silent) {
+      const result = await res.json();
+      notifications.show({
+        title: 'Gespeichert',
+        message: `${result.count ?? 'Alle'} Karten wurden erfolgreich gespeichert.`,
+        color: 'teal',
+        icon: <IconCheck size={18} />,
+      });
+    }
+
+    return true;
+  };
+
   const handleCreateCard = async (card: CardData) => {
     const { warnLevel, ...cardWithoutWarn } = card;
 
-    // 1) neue Liste berechnen (wichtig, weil setState async ist)
     const exists = rawCards.find((c) => c.id === card.id);
-
     const nextRawCards = exists
       ? rawCards.map((c) => (c.id === card.id ? cardWithoutWarn : c))
       : [...rawCards, cardWithoutWarn];
 
-    // 2) UI sofort updaten
     setRawCards(nextRawCards);
     setEditingCard(null);
 
-    // 3) Auto-Save (silent = true -> keine "Gespeichert"-Spam-Toast)
     try {
       await saveCardsToDB(nextRawCards, true);
-    } catch (e) {
+    } catch {
       notifications.show({
         title: 'Auto-Speichern fehlgeschlagen',
         message: 'Bitte Verbindung prüfen oder später „Alle speichern“ drücken.',
@@ -239,7 +274,6 @@ export default function DndGrid() {
       });
     }
   };
-
 
   const handleDelete = async (id: string) => {
     const nextRawCards = rawCards.filter((card) => card.id !== id);
@@ -262,56 +296,36 @@ export default function DndGrid() {
     setModalOpen(true);
   };
 
-  if (!mounted) {
-    return null;
-  }
-
-  const saveCardsToDB = async (cardsToSave: Omit<CardData, 'warnLevel'>[], silent = false) => {
-    const res = await fetch('/api/save-products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ cards: cardsToSave }),
-    });
-
-    if (!res.ok) {
-      if (!silent) {
-        notifications.show({
-          title: 'Fehler beim Speichern',
-          message: 'Unbekannter Fehler beim Speichern',
-          color: 'red',
-          icon: <IconX size={18} />,
-        });
-      }
-      throw new Error('save-products failed');
-    }
-
-    // optional: nur bei manuellem Save eine Toast
-    if (!silent) {
-      const result = await res.json();
-      notifications.show({
-        title: 'Gespeichert',
-        message: `${result.count ?? 'Alle'} Karten wurden erfolgreich gespeichert.`,
-        color: 'teal',
-        icon: <IconCheck size={18} />,
-      });
-    }
-
-    return true;
-  };
-
   const handleSave = async () => {
     setLoading(true);
-
     try {
       const payload = cards.map(({ warnLevel, ...rest }) => rest);
-      await saveCardsToDB(payload, false); // false = Toast anzeigen
-    } catch (e) {
-      // Fehler-Toast kommt in saveCardsToDB (silent=false)
+      await saveCardsToDB(payload, false);
     } finally {
       setLoading(false);
     }
   };
+
+  if (!mounted) return null;
+
+  // ✅ 3-Stage Icon + Tooltip
+  const sortModeLabel =
+    filters.sort === 'manual'
+      ? 'Manuell (frei verschieben)'
+      : filters.sort === 'expiry_asc'
+        ? 'Bald/abgelaufen zuerst'
+        : 'Längst haltbar zuerst';
+
+  const sortTooltip = `Modus: ${sortModeLabel} — klicken zum Wechseln`;
+
+  const sortIcon =
+    filters.sort === 'manual'
+      ? <IconHandMove size={18} />
+      : filters.sort === 'expiry_desc'
+        ? <IconSortDescending size={18} />
+        : <IconSortAscending size={18} />;
+
+  const sortColor = filters.sort === 'manual' ? 'green' : 'gray';
 
   return (
     <Stack>
@@ -319,7 +333,6 @@ export default function DndGrid() {
         opened={speechOpen}
         onClose={() => setSpeechOpen(false)}
         onApply={({ parsed }) => {
-          // Extra-sicher: falls mal "liter" etc. durchrutscht, normalisieren wir minimal
           const unit = (parsed.einheit ?? 'Stk').trim();
           const cat = (parsed.kategorie ?? '').trim();
 
@@ -335,7 +348,7 @@ export default function DndGrid() {
           });
 
           setSpeechOpen(false);
-          setModalOpen(true); // öffnet dein bestehendes CardCreateModal vorbefüllt
+          setModalOpen(true);
         }}
       />
 
@@ -349,11 +362,13 @@ export default function DndGrid() {
         initialData={editingCard}
       />
 
+      {/* Toolbar */}
       <Box
         mt="md"
         style={{
-          overflowX: 'auto',
+          overflowX: isMobile ? 'auto' : 'visible',
           WebkitOverflowScrolling: 'touch',
+          paddingBottom: 2,
         }}
       >
         <Group
@@ -362,7 +377,7 @@ export default function DndGrid() {
           gap="xs"
           style={{
             flexWrap: 'nowrap',
-            minWidth: 'max-content',
+            minWidth: isMobile ? 'max-content' : 'auto',
           }}
         >
           <Button variant="outline" onClick={() => setSpeechOpen(true)}>
@@ -406,38 +421,38 @@ export default function DndGrid() {
               value={filters.name || ''}
               onChange={(e) => {
                 const val = e?.currentTarget?.value ?? '';
-                if (typeof val === 'string') {
-                  setFilters((prev) => ({ ...prev, name: val }));
-                }
+                setFilters((prev) => ({ ...prev, name: val }));
               }}
               style={{ width: isMobile ? 160 : 300 }}
             />
 
-            <Tooltip
-              label={filters.sort === 'expiry_asc' ? 'Bald/abgelaufen zuerst' : 'Längst haltbar zuerst'}
-            >
+            <Tooltip label={sortTooltip}>
               <ActionIcon
-                variant="default"
+                variant={filters.sort === 'manual' ? 'filled' : 'default'}
+                color={sortColor}
                 size="lg"
                 onClick={() =>
                   setFilters((prev) => ({
                     ...prev,
-                    sort: prev.sort === 'expiry_asc' ? 'expiry_desc' : 'expiry_asc',
+                    sort:
+                      prev.sort === 'manual'
+                        ? 'expiry_asc'
+                        : prev.sort === 'expiry_asc'
+                          ? 'expiry_desc'
+                          : 'manual',
                   }))
                 }
               >
-                {filters.sort === 'expiry_asc' ? (
-                  <IconSortAscending size={18} />
-                ) : (
-                  <IconSortDescending size={18} />
-                )}
+                {sortIcon}
               </ActionIcon>
             </Tooltip>
+
             <ColorSchemeToggle />
           </Group>
         </Group>
       </Box>
 
+      {/* Grid */}
       <Box
         p="md"
         style={{
@@ -446,11 +461,11 @@ export default function DndGrid() {
         }}
       >
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={cards.map((c) => c.id)} strategy={rectSortingStrategy}>
+          <SortableContext items={filteredCards.map((c) => c.id)} strategy={rectSortingStrategy}>
             <SimpleGrid
-              cols={{ base: 2, sm: 4, md: 6 }}
-              spacing={{ base: 10, sm: 20 }}
-              verticalSpacing={{ base: 'md', sm: 'xl' }}
+              cols={{ base: 1, sm: 2, md: 4, lg: 6 }}
+              spacing={{ base: 12, sm: 16, md: 20 }}
+              verticalSpacing={{ base: 'md', sm: 'lg' }}
             >
               {filteredCards.map((card) => (
                 <SortableCard
@@ -458,6 +473,7 @@ export default function DndGrid() {
                   card={card}
                   onDelete={handleDelete}
                   onClick={handleCardClick}
+                  dndDisabled={filters.sort !== 'manual'}
                 />
               ))}
 
@@ -481,13 +497,16 @@ function SortableCard({
   card,
   onDelete,
   onClick,
+  dndDisabled,
 }: {
   card: CardData;
   onDelete: (id: string) => void;
   onClick: (card: CardData) => void;
+  dndDisabled: boolean;
 }) {
   const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
     id: card.id,
+    disabled: dndDisabled,
   });
 
   const style = {
@@ -495,6 +514,8 @@ function SortableCard({
     transition,
     zIndex: isDragging ? 100 : 'auto',
     width: '100%',
+    height: '100%',
+    touchAction: 'pan-y' as const,
   };
 
   return (
@@ -502,7 +523,7 @@ function SortableCard({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...(dndDisabled ? {} : listeners)}
       onClick={() => onClick(card)}
     >
       <GridItem
@@ -513,7 +534,7 @@ function SortableCard({
         ablaufdatum={card.ablaufdatum}
         erfasstAm={card.erfasstAm}
         kategorie={card.kategorie}
-        warnLevel={card.warnLevel ?? calculateWarnLevel(card.ablaufdatum)} // 🔥 Fallback
+        warnLevel={card.warnLevel ?? calculateWarnLevel(card.ablaufdatum)}
         isDragging={isDragging}
         onDelete={() => onDelete(card.id)}
       />

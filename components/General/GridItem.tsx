@@ -1,7 +1,19 @@
-import { IconPhoto } from '@tabler/icons-react';
-import { motion } from 'framer-motion';
-import { Badge, Button, Card, Center, Image, Text } from '@mantine/core';
+import { IconCalendar, IconPhoto, IconTrash } from '@tabler/icons-react';
+import {
+  alpha,
+  Badge,
+  Box,
+  Button,
+  Card,
+  Center,
+  Group,
+  Image,
+  Stack,
+  Text,
+  useMantineTheme,
+} from '@mantine/core';
 import { WarnLevel } from '@/app/types';
+import { useMantineColorScheme } from '@mantine/core';
 
 type Props = {
   image: string;
@@ -16,6 +28,12 @@ type Props = {
   onDelete?: () => void;
 };
 
+function warnBadge(w: WarnLevel) {
+  if (w === WarnLevel.OK) return { color: 'green' as const, text: 'Frisch' };
+  if (w === WarnLevel.BALD) return { color: 'yellow' as const, text: 'Bald' };
+  return { color: 'red' as const, text: 'Abgelaufen' };
+}
+
 export function GridItem({
   image,
   name,
@@ -28,107 +46,167 @@ export function GridItem({
   isDragging,
   onDelete,
 }: Props) {
-  const warnColor =
-    warnLevel === WarnLevel.OK ? 'green' : warnLevel === WarnLevel.BALD ? 'yellow' : 'red';
+  const { colorScheme } = useMantineColorScheme(); // 'light' | 'dark'
+  const theme = useMantineTheme();
+  const b = warnBadge(warnLevel);
+  const isDark = colorScheme === 'dark';
+
+  const tileBg = isDark
+    ? alpha(theme.colors.dark[5], 0.35)
+    : alpha(theme.colors.gray[1], 0.6);
+
+  const tileBorder = isDark
+    ? alpha(theme.colors.dark[2], 0.35)
+    : theme.colors.gray[3];
+
+  const surfaceBg = isDark
+    ? alpha(theme.colors.dark[6], 0.55)
+    : alpha(theme.white, 0.6);
 
   return (
-    <motion.div
-      layout
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.95, opacity: 0 }}
-      transition={{ duration: 0.2 }}
+    <Card
+      radius="xl"
+      withBorder
+      shadow="sm"
+      padding={0}
       style={{
+        height: 350,
         cursor: isDragging ? 'grabbing' : 'grab',
-        width: '100%',
-        height: 300,
-        display: 'flex',
+        // "ring" Effekt wie vorher
+        outline: isDragging ? `2px solid ${theme.colors[theme.primaryColor][5]}` : 'none',
+        outlineOffset: 2,
       }}
     >
-      <Card
-        shadow="sm"
-        padding="sm"
-        radius="md"
-        withBorder
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-        }}
-      >
-        {/* Bild oder Icon */}
-        <Card.Section>
-          {image && image.trim() !== '' ? (
-            <Image
-              src={image}
-              height={90}
-              fit="cover"
-              radius="sm"
-              alt={name}
-              style={{ width: '100%', objectFit: 'cover', objectPosition: 'center' }} // ✅
-            />
-          ) : (
-            <Center style={{ height: 90, backgroundColor: '#f1f3f5' }}>
-              <IconPhoto size={40} color="#ccc" />
-            </Center>
-          )}
-        </Card.Section>
+      {/* Image */}
+      <Box pos="relative" h={130} style={{overflow: 'hidden'}}>
+        {image && image.trim() !== '' ? (
+          <Image
+            src={image}
+            alt={name}
+            h={130}
+            w="100%"
+            fit="cover"
+            style={{ overflow: 'hidden' }}
+          />
+        ) : (
+          <Center h={130} bg={isDark ? theme.colors.dark[6] : theme.colors.gray[1]}>
+            <IconPhoto size={40} color={isDark ? theme.colors.dark[1] : theme.colors.gray[5]} />
+          </Center>
+        )}
 
-        {/* Warnlevel unter Bild */}
-        <Badge
-          color={warnColor}
-          size="xs"
-          variant="filled"
-          mt="xs"
-          style={{ alignSelf: 'flex-end', paddingBlock: '10px' }}
-        >
-          {warnLevel === WarnLevel.OK
-            ? 'Frisch'
-            : warnLevel === WarnLevel.BALD
-              ? 'Bald abgelaufen'
-              : 'Abgelaufen'}
-        </Badge>
+        {/* gradient overlay */}
+        <Box
+          pos="absolute"
+          inset={0}
+          style={{
+            background:
+              'linear-gradient(to top, rgba(0,0,0,0.60), rgba(0,0,0,0.10), rgba(0,0,0,0))',
+          }}
+        />
 
-        {/* Inhalt */}
-        <div style={{ flexGrow: 1 }}>
-          <Text fw={600} size="sm" lineClamp={2}>
+        {/* status badge */}
+        <Box pos="absolute" top={12} right={12}>
+          <Badge color={b.color} variant="filled" radius="sm">
+            {b.text}
+          </Badge>
+        </Box>
+      </Box>
+
+      {/* Content */}
+      <Stack gap={0} px="md" py="sm" style={{ flex: 1 }}>
+        <Box style={{ minHeight: 0 }}>
+          <Text fw={600} size="md" lh={1.25} lineClamp={2}>
             {name}
           </Text>
 
-          <Text size="xs" c="dimmed">
-            Menge: {menge} {einheit}
-          </Text>
+          {/* two tiles */}
+          <Group grow mt="sm" gap="sm" align="stretch">
+            <Box
+              style={{
+                borderRadius: 16,
+                border: `1px solid ${tileBorder}`,
+                background: tileBg,
+                padding: '10px 12px',
+              }}
+            >
+              <Text size="xs" c="dimmed">
+                Menge
+              </Text>
+              <Text fw={500}>
+                {menge} {einheit}
+              </Text>
+            </Box>
 
-          <Text size="xs" c="dimmed" lineClamp={1}>
-            Kategorie: {kategorie}
-          </Text>
+            <Box
+              style={{
+                borderRadius: 16,
+                border: `1px solid ${tileBorder}`,
+                background: tileBg,
+                padding: '10px 12px',
+              }}
+            >
+              <Text size="xs" c="dimmed">
+                Kategorie
+              </Text>
+              <Text fw={500} lineClamp={1}>
+                {kategorie}
+              </Text>
+            </Box>
+          </Group>
 
-          <div style={{ marginTop: 8 }}>
-            <Text size="xs">Erfasst: {erfasstAm}</Text>
-            <Text size="xs">Ablauf: {ablaufdatum}</Text>
-          </div>
-        </div>
-
-        {/* Löschen Button */}
-        {onDelete && (
-          <Button
-            onClick={(e) => {
-              e.stopPropagation(); // verhindert Klick-Propagation zur Karte
-              onDelete?.();
+          {/* date block */}
+          <Box
+            mt="sm"
+            style={{
+              borderRadius: 16,
+              border: `1px solid ${tileBorder}`,
+              background: surfaceBg,
+              padding: '10px 12px',
             }}
-            color="red"
-            variant="light"
-            size="xs"
-            fullWidth
-            radius="sm"
-            mt="xs"
           >
-            Löschen
-          </Button>
-        )}
-      </Card>
-    </motion.div>
+            <Group gap={8} wrap="nowrap" align="center">
+              <IconCalendar size={14} color={theme.colors.gray[6]} />
+              <Text size="xs" c="dimmed">
+                Erfasst
+              </Text>
+              <Text size="xs" style={{ marginLeft: 'auto' }}>
+                {erfasstAm}
+              </Text>
+            </Group>
+
+            <Group gap={8} wrap="nowrap" align="center" mt={6}>
+              <IconCalendar size={14} color={theme.colors.gray[6]} />
+              <Text size="xs" c="dimmed">
+                Ablauf
+              </Text>
+              <Text size="xs" style={{ marginLeft: 'auto' }}>
+                {ablaufdatum}
+              </Text>
+            </Group>
+          </Box>
+        </Box>
+
+        {/* Footer */}
+        <Box mt="auto" pt="sm">
+          {onDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              fullWidth
+              leftSection={<IconTrash size={16} />}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+            >
+              Löschen
+            </Button>
+          )}
+        </Box>
+      </Stack>
+    </Card>
   );
 }

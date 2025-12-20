@@ -31,6 +31,18 @@ export const kategorien = [
   'Früchte',
 ] as const;
 
+export type Filters = {
+  name: string;
+  kategorie: string;
+  einheit: string;
+  warnLevel: string;
+  ablaufVon: Date | null;
+  ablaufBis: Date | null;
+  mengeVon: number | null;
+  mengeBis: number | null;
+  sort: 'manual' | 'expiry_asc' | 'expiry_desc';
+};
+
 export const einheiten = ['Stk', 'g', 'kg', 'ml', 'L', 'Packung'] as const;
 
 export type WarnLevel = (typeof WarnLevel)[keyof typeof WarnLevel];
