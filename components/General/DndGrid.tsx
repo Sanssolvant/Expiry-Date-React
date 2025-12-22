@@ -48,6 +48,7 @@ import { GridItem } from './GridItem';
 import { SettingsMenu } from './SettingsMenu';
 import { SpeechCreateModal } from './SpeechCreateModal';
 import { ColorSchemeToggle } from './ColorSchemeToggle';
+import { PhotoCreateModal } from './PhotoCreateModal';
 
 export type CardData = {
   id: string;
@@ -65,6 +66,7 @@ export default function DndGrid() {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [warnBaldAb, setWarnBaldAb] = useState(3);
@@ -352,6 +354,41 @@ export default function DndGrid() {
         }}
       />
 
+      <PhotoCreateModal
+        opened={photoOpen}
+        onClose={() => setPhotoOpen(false)}
+        onApply={({ items }) => {
+          const now = formatDateToDisplay(new Date());
+
+          // Multi-create direkt in rawCards speichern (ohne extra Editing)
+          const newCards = items.map((it) => ({
+            id: crypto.randomUUID(),
+            name: it.name,
+            menge: Number(it.quantity ?? 1),
+            einheit: (it.unit ?? 'Stk').trim() || 'Stk',
+            kategorie: (it.category ?? '').trim(),
+            ablaufdatum: it.expiry_guess ?? now,
+            erfasstAm: now,
+            image: '', // optional: du könntest das Foto auch speichern & URL setzen
+          }));
+
+          const nextRaw = [...rawCards, ...newCards];
+          setRawCards(nextRaw);
+
+          setPhotoOpen(false);
+
+          // Auto-save wie du es schon machst:
+          saveCardsToDB(nextRaw, true).catch(() => {
+            notifications.show({
+              title: 'Auto-Speichern fehlgeschlagen',
+              message: 'Bitte später „Alle speichern“ drücken.',
+              color: 'red',
+              icon: <IconX size={18} />,
+            });
+          });
+        }}
+      />
+
       <CardCreateModal
         opened={modalOpen}
         onClose={() => {
@@ -382,6 +419,10 @@ export default function DndGrid() {
         >
           <Button variant="outline" onClick={() => setSpeechOpen(true)}>
             🎙️
+          </Button>
+
+          <Button variant="outline" onClick={() => setPhotoOpen(true)}>
+            📷
           </Button>
 
           <Button onClick={() => setModalOpen(true)}>
