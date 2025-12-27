@@ -279,14 +279,12 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
                 leftSection={<IconCalendar size={18} stroke={1.5} />}
                 leftSectionPointerEvents="none"
                 label="Erfasst am"
-                dropdownType="modal"
                 valueFormat="DD.MM.YYYY"
                 {...form.getInputProps('erfasstAm')}
               />
               <DatePickerInput
                 leftSection={<IconCalendar size={18} stroke={1.5} />}
                 leftSectionPointerEvents="none"
-                dropdownType="modal"
                 label="Ablaufdatum"
                 valueFormat="DD.MM.YYYY"
                 {...form.getInputProps('ablaufdatum')}

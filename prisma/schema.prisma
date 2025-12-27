@@ -31,6 +31,9 @@ model User {
   produkte      Produkt[]     @relation("UserToProdukt")
   settings      UserSettings?
 
+  shoppingGroups ShoppingGroup[] @relation("UserToShoppingGroup")
+  shoppingItems   ShoppingItem[]   @relation("UserToShoppingItem")
+
   username        String?
   displayUsername String? @db.Text
 
@@ -110,3 +113,35 @@ model UserSettings {
 
   @@map("userSettings")
 }
+
+model ShoppingGroup {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation("UserToShoppingGroup", fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  items     ShoppingItem[]
+
+  @@map("shopping_group")
+}
+
+model ShoppingItem {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  user      User     @relation("UserToShoppingItem", fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String
+  amount    String   @default("")
+  done      Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  groupId   String?
+  group     ShoppingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@map("shopping_item")
+}
+
