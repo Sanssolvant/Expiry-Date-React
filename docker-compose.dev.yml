@@ -47,6 +47,26 @@ services:
       '
     networks: [trackshelf-dev]
 
+  reminder-cron:
+    image: curlimages/curl:8.11.1
+    container_name: trackshelf-dev-reminder-cron
+    restart: unless-stopped
+    env_file:
+      - .env.docker.dev
+    depends_on:
+      app:
+        condition: service_healthy
+    command: >
+      sh -lc '
+        while true; do
+          echo "[reminder] $(date -Iseconds)";
+          curl -fsS -X POST http://app:3000/api/reminders/send \
+            -H "x-reminder-secret: ${REMINDER_CRON_SECRET}" || true;
+          sleep 60;
+        done
+      '
+    networks: [trackshelf-dev]
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: trackshelf-dev-tunnel

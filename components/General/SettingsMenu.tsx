@@ -1,17 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { IconAlertTriangle, IconSettings } from '@tabler/icons-react';
+import { IconAlertTriangle, IconMail, IconSettings } from '@tabler/icons-react';
 import {
   alpha,
-  Badge,
   Box,
   Button,
   Group,
   Modal,
   NumberInput,
+  Select,
   Stack,
+  Switch,
   Text,
+  TextInput,
   ThemeIcon,
   useMantineColorScheme,
   useMantineTheme,
@@ -24,6 +26,16 @@ type Props = {
   setAbgelaufenAb: (n: number) => void;
   iconOnly?: boolean;
 };
+
+const intervalUnitData = [
+  { value: 'day', label: 'Tag(e)' },
+  { value: 'week', label: 'Woche(n)' },
+  { value: 'month', label: 'Monat(e)' },
+];
+
+function isValidTime(value: string) {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+}
 
 export function SettingsMenu({
   baldAb,
@@ -44,13 +56,72 @@ export function SettingsMenu({
   const [localBald, setLocalBald] = useState<number | ''>(baldAb);
   const [localExpired, setLocalExpired] = useState<number | ''>(abgelaufenAb);
 
+  const [localReminderEnabled, setLocalReminderEnabled] = useState(false);
+  const [localReminderTime, setLocalReminderTime] = useState('08:00');
+  const [localIntervalValue, setLocalIntervalValue] = useState<number | ''>(1);
+  const [localIntervalUnit, setLocalIntervalUnit] = useState<'day' | 'week' | 'month'>('day');
+  const [localReminderTimeZone, setLocalReminderTimeZone] = useState('Europe/Zurich');
+
   useEffect(() => {
-    if (opened) {
-      setLocalBald(baldAb);
-      setLocalExpired(abgelaufenAb);
-      setError('');
-      setSuccess(false);
+    if (!opened) {
+      return;
     }
+
+    setLocalBald(baldAb);
+    setLocalExpired(abgelaufenAb);
+    setError('');
+    setSuccess(false);
+
+    let cancelled = false;
+
+    const loadSettings = async () => {
+      try {
+        const res = await fetch('/api/user-settings', { method: 'GET', credentials: 'include' });
+        if (!res.ok) {
+          return;
+        }
+
+        const settings = await res.json();
+        if (cancelled) {
+          return;
+        }
+
+        if (settings.warnLevelBald != null) {
+          setLocalBald(Number(settings.warnLevelBald));
+        }
+        if (settings.warnLevelExpired != null) {
+          setLocalExpired(Number(settings.warnLevelExpired));
+        }
+
+        setLocalReminderEnabled(Boolean(settings.emailRemindersEnabled));
+
+        const loadedTime =
+          typeof settings.emailReminderTime === 'string' && isValidTime(settings.emailReminderTime)
+            ? settings.emailReminderTime
+            : `${String(Number(settings.emailReminderHour ?? 8)).padStart(2, '0')}:00`;
+        setLocalReminderTime(loadedTime);
+
+        const loadedIntervalValue = Number(settings.emailReminderIntervalValue ?? 1);
+        setLocalIntervalValue(Number.isFinite(loadedIntervalValue) ? Math.max(1, loadedIntervalValue) : 1);
+
+        const loadedUnit =
+          settings.emailReminderIntervalUnit === 'week' ||
+          settings.emailReminderIntervalUnit === 'month'
+            ? settings.emailReminderIntervalUnit
+            : 'day';
+        setLocalIntervalUnit(loadedUnit);
+
+        setLocalReminderTimeZone(settings.emailReminderTimeZone || 'Europe/Zurich');
+      } catch {
+        // keep defaults
+      }
+    };
+
+    loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
   }, [opened, baldAb, abgelaufenAb]);
 
   const tileBg = isDark ? alpha(theme.colors.dark[5], 0.35) : alpha(theme.colors.gray[1], 0.6);
@@ -68,9 +139,23 @@ export function SettingsMenu({
     setSuccess(false);
 
     if (localBald === '' || localExpired === '') {
-      setError('Bitte beide Werte eingeben.');
+      setError('Bitte beide Warnstufen-Werte eingeben.');
       setSaving(false);
       return;
+    }
+
+    if (localReminderEnabled) {
+      if (!isValidTime(localReminderTime)) {
+        setError('Bitte eine gueltige Uhrzeit im Format HH:mm eingeben.');
+        setSaving(false);
+        return;
+      }
+
+      if (localIntervalValue === '' || Number(localIntervalValue) < 1) {
+        setError('Bitte ein Intervall grösser oder gleich 1 setzen.');
+        setSaving(false);
+        return;
+      }
     }
 
     try {
@@ -81,20 +166,25 @@ export function SettingsMenu({
         body: JSON.stringify({
           warnLevelBald: Number(localBald),
           warnLevelExpired: Number(localExpired),
+          emailRemindersEnabled: localReminderEnabled,
+          emailReminderTime: localReminderTime,
+          emailReminderIntervalValue: Number(localIntervalValue || 1),
+          emailReminderIntervalUnit: localIntervalUnit,
+          emailReminderTimeZone: localReminderTimeZone,
         }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Fehler beim Speichern');
       }
 
       setBaldAb(Number(localBald));
       setAbgelaufenAb(Number(localExpired));
       setSuccess(true);
-      setTimeout(() => setOpened(false), 800);
+      setTimeout(() => setOpened(false), 900);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || 'Speichern fehlgeschlagen');
     } finally {
       setSaving(false);
     }
@@ -127,17 +217,16 @@ export function SettingsMenu({
             </ThemeIcon>
             <Box>
               <Text fw={700} lh={1.1}>
-                Warnstufen einstellen
+                Einstellungen
               </Text>
               <Text size="xs" c="dimmed">
-                Bestimme, ab wann Karten als „Bald ablaufend“ oder „Abgelaufen“ gelten.
+                Warnstufen und E-Mail Erinnerungen verwalten.
               </Text>
             </Box>
           </Group>
         }
       >
         <Stack gap="md">
-          {/* Erklärung */}
           <Box
             style={{
               borderRadius: 16,
@@ -147,31 +236,15 @@ export function SettingsMenu({
             }}
           >
             <Text size="sm" fw={600}>
-              Wie funktioniert das?
+              Hinweise
             </Text>
             <Text size="xs" c="dimmed" mt={4}>
-              • „Bald ablaufend“ = Ablaufdatum liegt in den nächsten X Tagen. <br />
-              • „Abgelaufen“ = Ablaufdatum ist seit Y Tagen vorbei.
+              - Bald ablaufend: Ablauf in den nächsten X Tagen.{'\n'}
+              - Abgelaufen: seit Y Tagen vorbei.{'\n'}
+              - Erinnerung: z.B. alle 2 Wochen um 22:13 oder alle 1 Monat.
             </Text>
-
-            <Group mt="sm" gap="xs">
-              <Badge variant="filled" color="yellow" radius="sm">
-                Bald
-              </Badge>
-              <Text size="xs" c="dimmed">
-                z.B. Ablauf in 2 Tagen
-              </Text>
-
-              <Badge variant="filled" color="red" radius="sm" ml="md">
-                Abgelaufen
-              </Badge>
-              <Text size="xs" c="dimmed">
-                z.B. seit 1 Tag abgelaufen
-              </Text>
-            </Group>
           </Box>
 
-          {/* Input 1 */}
           <Box
             style={{
               borderRadius: 16,
@@ -180,17 +253,30 @@ export function SettingsMenu({
               padding: 12,
             }}
           >
+            <Text fw={700} size="sm" mb="xs">
+              Warnstufen
+            </Text>
+
             <NumberInput
-              label="„Bald ablaufend“, wenn Ablauf in … Tagen"
-              description="Beispiel: 3 → Alles mit Ablauf in 0–3 Tagen wird gelb markiert."
+              label="Bald ablaufend in ... Tagen"
+              description="Beispiel: 3 -> Ablauf in 0-3 Tagen wird markiert."
               min={1}
               max={30}
               value={localBald}
               onChange={(val) => setLocalBald(val === '' ? '' : Number(val))}
             />
+
+            <NumberInput
+              mt="sm"
+              label="Abgelaufen seit ... Tagen"
+              description="Beispiel: 0 -> direkt nach Ablauf als abgelaufen."
+              min={0}
+              max={maxExpired}
+              value={localExpired}
+              onChange={(val) => setLocalExpired(val === '' ? '' : Number(val))}
+            />
           </Box>
 
-          {/* Input 2 */}
           <Box
             style={{
               borderRadius: 16,
@@ -199,33 +285,69 @@ export function SettingsMenu({
               padding: 12,
             }}
           >
-            <NumberInput
-              label="„Abgelaufen“, wenn seit … Tagen vorbei"
-              description="Beispiel: 0 → Ab dem Tag nach Ablauf ist es sofort rot."
-              min={0}
-              max={maxExpired}
-              value={localExpired}
-              onChange={(val) => setLocalExpired(val === '' ? '' : Number(val))}
+            <Group gap="xs" mb="xs">
+              <IconMail size={16} />
+              <Text fw={700} size="sm">
+                E-Mail Erinnerungen
+              </Text>
+            </Group>
+
+            <Switch
+              checked={localReminderEnabled}
+              onChange={(e) => setLocalReminderEnabled(e.currentTarget.checked)}
+              label="E-Mail Erinnerungen aktivieren"
             />
+
+            <TextInput
+              mt="sm"
+              type="time"
+              label="Uhrzeit"
+              description="Format HH:mm, z.B. 22:13"
+              value={localReminderTime}
+              onChange={(e) => setLocalReminderTime(e.currentTarget.value)}
+              disabled={!localReminderEnabled}
+            />
+
+            <Group mt="sm" grow>
+              <NumberInput
+                label="Intervall"
+                min={1}
+                max={365}
+                value={localIntervalValue}
+                onChange={(val) => setLocalIntervalValue(val === '' ? '' : Number(val))}
+                disabled={!localReminderEnabled}
+              />
+
+              <Select
+                label="Einheit"
+                data={intervalUnitData}
+                value={localIntervalUnit}
+                onChange={(val) => setLocalIntervalUnit((val as 'day' | 'week' | 'month') || 'day')}
+                allowDeselect={false}
+                disabled={!localReminderEnabled}
+              />
+            </Group>
+
             <Text size="xs" c="dimmed" mt={6}>
-              Tipp: Der Wert muss kleiner sein als „Bald“, damit sich die Bereiche nicht überschneiden.
+              Zeitzone: {localReminderTimeZone}
             </Text>
           </Box>
 
-          {error && (
+          {error ? (
             <Text c="red" size="xs">
               {error}
             </Text>
-          )}
-          {success && (
+          ) : null}
+
+          {success ? (
             <Text c="teal" size="xs">
-              Gespeichert ✅
+              Gespeichert.
             </Text>
-          )}
+          ) : null}
 
           <Group justify="flex-end" mt="xs">
             <Button variant="default" onClick={() => setOpened(false)}>
-              Schließen
+              Schliessen
             </Button>
             <Button onClick={handleSave} loading={saving}>
               Speichern

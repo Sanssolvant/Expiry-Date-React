@@ -142,15 +142,7 @@ export function LoginForm() {
             </Group>
 
             <Title order={2} ta="center">
-              Willkommen bei{' '}
-              <Text
-                inherit
-                variant="gradient"
-                component="span"
-                gradient={{ from: 'blue', to: 'cyan' }}
-              >
-                TrackShelf
-              </Text>
+              Anmelden
             </Title>
 
             <Text ta="center" c="dimmed" size="sm">
@@ -201,7 +193,45 @@ export function LoginForm() {
         </Paper>
       </div>
 
-      <div className={classes.imageSide} />
+      <div className={classes.imageSide}>
+        <div className={classes.heroContent}>
+          <Title order={1} className={classes.heroTitle}>
+            Willkommen bei <span className={classes.heroAccent}>TrackShelf</span>
+          </Title>
+
+          <Text className={classes.heroSubtitle}>
+            Behalte Ablaufdaten, Vorräte und deinen Einkauf im Griff: Tracke Lebensmittel, erhalte
+            rechtzeitig Erinnerungen und führe eine Einkaufsliste, die mitdenkt.
+          </Text>
+
+          <ul className={classes.heroList}>
+            <li>⏰ Erinnerungen für bald ablaufende Produkte</li>
+            <li>📦 Vorratsübersicht mit Kategorien &amp; Mindestbestand</li>
+            <li>🛒 Einkaufsliste erstellen, teilen und beim Einkauf abhaken</li>
+          </ul>
+
+          <div className={classes.heroCards}>
+            <div className={classes.heroCard}>
+              <Text fw={700}>Ablauf-Übersicht</Text>
+              <Text size="sm" c="dimmed">
+                Sieh sofort, was heute, bald oder später abläuft – und plane Mahlzeiten smarter.
+              </Text>
+            </div>
+
+            <div className={classes.heroCard}>
+              <Text fw={700}>Einkaufszettel</Text>
+              <Text size="sm" c="dimmed">
+                Fehlt etwas? Mit einem Tap auf die Liste – perfekt für den nächsten Einkauf.
+              </Text>
+            </div>
+          </div>
+
+          <Text className={classes.heroFootnote}>
+            Weniger wegwerfen, besser planen – TrackShelf hilft dir, Food Waste im Alltag zu reduzieren.
+          </Text>
+
+        </div>
+      </div>
     </div>
   );
 }

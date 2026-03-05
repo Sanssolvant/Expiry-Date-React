@@ -96,103 +96,92 @@ export function ResetPasswordForm() {
 
   return (
     <div className={classes.wrapper}>
-      <div className={classes.formSide}>
-        <Paper
-          radius="xl"
-          p="xl"
-          className={classes.card}
-          style={{
-            background: surfaceBg,
-            border: `1px solid ${surfaceBorder}`,
-          }}
-        >
-          <Group justify="center" mb="sm">
-            <Logo />
+      <Paper
+        radius="xl"
+        p="xl"
+        className={classes.card}
+        style={{
+          background: surfaceBg,
+          border: `1px solid ${surfaceBorder}`,
+        }}
+      >
+        <Group justify="center" mb="sm">
+          <Logo />
+        </Group>
+
+        {type === 'success' && <NotificationElementSuccess text={text} />}
+        {type === 'error' && <NotificationElementError text={text} />}
+
+        <Stack gap={6} mt={type ? 'sm' : 0} mb="md">
+          <Group justify="center">
+            <ThemeIcon radius="xl" variant="light" size={44}>
+              <IconKey size={20} />
+            </ThemeIcon>
           </Group>
 
-          {type === 'success' && <NotificationElementSuccess text={text} />}
-          {type === 'error' && <NotificationElementError text={text} />}
+          <Title order={2} ta="center">
+            Neues Passwort setzen
+          </Title>
 
-          <Stack gap={6} mt={type ? 'sm' : 0} mb="md">
-            <Group justify="center">
-              <ThemeIcon radius="xl" variant="light" size={44}>
-                <IconKey size={20} />
-              </ThemeIcon>
-            </Group>
+          <Text ta="center" c="dimmed" size="sm">
+            Wähle ein neues Passwort für deinen Account.
+          </Text>
+        </Stack>
 
-            <Title order={2} ta="center">
-              Neues Passwort setzen
-            </Title>
+        <Divider my="lg" />
 
-            <Text ta="center" c="dimmed" size="sm">
-              Wähle ein neues Passwort für deinen Account.
-            </Text>
-          </Stack>
+        <form onSubmit={handleSubmit}>
+          <Stack gap="sm">
+            <div>
+              <PasswordField form={form} />
+            </div>
 
-          <Divider my="lg" />
+            <div>
+              <PasswordConfirmField
+                confirmPassword={confirmPassword}
+                setConfirmPassword={setConfirmPassword}
+                confirmPasswordError={confirmPasswordError}
+                setConfirmPasswordError={setConfirmPasswordError}
+              />
+            </div>
 
-          <form onSubmit={handleSubmit}>
-            <Stack gap="sm">
-              {/* Passwort */}
-              <div>
-                {/* nutzt deine bestehende PasswordField-Komponente */}
-                <PasswordField form={form} />
-              </div>
+            <Button
+              type="submit"
+              loading={loading}
+              leftSection={<IconShieldCheck size={16} />}
+              mt="xs"
+              radius="lg"
+              fullWidth
+            >
+              Passwort speichern
+            </Button>
 
-              {/* Passwort bestätigen */}
-              <div>
-                <PasswordConfirmField
-                  confirmPassword={confirmPassword}
-                  setConfirmPassword={setConfirmPassword}
-                  confirmPasswordError={confirmPasswordError}
-                  setConfirmPasswordError={setConfirmPasswordError}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                loading={loading}
-                leftSection={<IconShieldCheck size={16} />}
-                mt="xs"
-                radius="lg"
-                fullWidth
-              >
-                Passwort speichern
-              </Button>
-
-              <Stack align="center" gap={4} mt="md">
-                <Text size="sm" c="dimmed">
-                  Zurück zum{' '}
-                  <Anchor fw={700} onClick={() => router.push('/')}>
-                    Login
-                  </Anchor>
-                </Text>
-
-                <Button
-                  variant="subtle"
-                  leftSection={<IconArrowBack size={16} />}
-                  onClick={() => router.push('/')}
-                >
-                  Zurück
-                </Button>
-              </Stack>
-            </Stack>
-          </form>
-
-          {!token && (
-            <Group mt="lg" justify="center">
-              <ThemeIcon radius="xl" variant="light">
-                <IconLock size={16} />
-              </ThemeIcon>
-              <Text size="xs" c="dimmed">
-                Link ungültig oder abgelaufen. Bitte erneut „Passwort vergessen“ nutzen.
+            <Stack align="center" gap={4} mt="md">
+              <Text size="sm" c="dimmed">
+                Zurück zum{' '}
+                <Anchor fw={700} onClick={() => router.push('/')}>
+                  Login
+                </Anchor>
               </Text>
-            </Group>
-          )}
-        </Paper>
-      </div>
 
-      <div className={classes.imageSide} />
+              <Button variant="subtle" leftSection={<IconArrowBack size={16} />} onClick={() => router.push('/')}>
+                Zurück
+              </Button>
+            </Stack>
+          </Stack>
+        </form>
+
+        {!token && (
+          <Group mt="lg" justify="center">
+            <ThemeIcon radius="xl" variant="light">
+              <IconLock size={16} />
+            </ThemeIcon>
+            <Text size="xs" c="dimmed">
+              Link ungültig oder abgelaufen. Bitte erneut „Passwort vergessen“ nutzen.
+            </Text>
+          </Group>
+        )}
+      </Paper>
     </div>
   );
 }

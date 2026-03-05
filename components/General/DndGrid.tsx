@@ -39,8 +39,7 @@ import { notifications } from '@mantine/notifications';
 
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
-import { parseAblauf, WarnLevel, warnPriority } from '@/app/types';
-import type { Filters } from '@/app/types';
+import { parseAblauf, WarnLevel, warnPriority, type Filters } from '@/app/types';
 
 import { CardCreateModal } from './CardCreateModal';
 import { CardFilterMenu } from './CardFilterMenu';
@@ -69,6 +68,7 @@ export default function DndGrid() {
   const [photoOpen, setPhotoOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [addingToShoppingListIds, setAddingToShoppingListIds] = useState<string[]>([]);
   const [warnBaldAb, setWarnBaldAb] = useState(3);
   const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(0);
 
@@ -293,6 +293,47 @@ export default function DndGrid() {
     }
   };
 
+  const handleAddToShoppingList = async (card: CardData) => {
+    setAddingToShoppingListIds((prev) => (prev.includes(card.id) ? prev : [...prev, card.id]));
+
+    try {
+      const amount = `${card.menge} ${card.einheit}`.trim();
+      const res = await fetch('/api/add-to-shopping-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: card.name,
+          amount,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Hinzufügen fehlgeschlagen');
+      }
+
+      notifications.show({
+        title: 'Einkaufszettel aktualisiert',
+        message: data?.created
+          ? `${card.name} wurde zum Einkaufszettel hinzugefügt.`
+          : `${card.name} ist bereits auf dem Einkaufszettel.`,
+        color: 'teal',
+        icon: <IconCheck size={18} />,
+      });
+    } catch (error: any) {
+      notifications.show({
+        title: 'Fehler',
+        message: error?.message || 'Produkt konnte nicht auf den Einkaufszettel gelegt werden.',
+        color: 'red',
+        icon: <IconX size={18} />,
+      });
+    } finally {
+      setAddingToShoppingListIds((prev) => prev.filter((id) => id !== card.id));
+    }
+  };
+
   const handleCardClick = (card: CardData) => {
     setEditingCard(card);
     setModalOpen(true);
@@ -513,6 +554,8 @@ export default function DndGrid() {
                   key={card.id}
                   card={card}
                   onDelete={handleDelete}
+                  onAddToShoppingList={handleAddToShoppingList}
+                  addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
                   onClick={handleCardClick}
                   dndDisabled={filters.sort !== 'manual'}
                 />
@@ -537,11 +580,15 @@ export default function DndGrid() {
 function SortableCard({
   card,
   onDelete,
+  onAddToShoppingList,
+  addToShoppingListLoading,
   onClick,
   dndDisabled,
 }: {
   card: CardData;
   onDelete: (id: string) => void;
+  onAddToShoppingList: (card: CardData) => void;
+  addToShoppingListLoading: boolean;
   onClick: (card: CardData) => void;
   dndDisabled: boolean;
 }) {
@@ -577,6 +624,8 @@ function SortableCard({
         kategorie={card.kategorie}
         warnLevel={card.warnLevel ?? calculateWarnLevel(card.ablaufdatum)}
         isDragging={isDragging}
+        onAddToShoppingList={() => onAddToShoppingList(card)}
+        addToShoppingListLoading={addToShoppingListLoading}
         onDelete={() => onDelete(card.id)}
       />
     </motion.div>

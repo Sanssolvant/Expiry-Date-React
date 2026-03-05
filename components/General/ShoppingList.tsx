@@ -138,6 +138,8 @@ export default function ShoppingList() {
   // rename group inline
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupName, setEditingGroupName] = useState('');
+  const [editingAmountItemId, setEditingAmountItemId] = useState<string | null>(null);
+  const [editingAmountValue, setEditingAmountValue] = useState('');
 
   // autosave
   const saveTimer = useRef<number | null>(null);
@@ -407,6 +409,46 @@ export default function ShoppingList() {
   function deleteItem(itemId: string) {
     const nextItems = items.filter((it) => it.id !== itemId);
     setItems(nextItems);
+
+    if (editingAmountItemId === itemId) {
+      setEditingAmountItemId(null);
+      setEditingAmountValue('');
+    }
+
+    scheduleSave(groups, nextItems);
+  }
+
+  function startEditItemAmount(item: EinkaufsItem) {
+    setEditingAmountItemId(item.id);
+    setEditingAmountValue(item.amount ?? '');
+  }
+
+  function cancelEditItemAmount() {
+    setEditingAmountItemId(null);
+    setEditingAmountValue('');
+  }
+
+  function commitEditItemAmount() {
+    if (!editingAmountItemId) return;
+
+    const nextAmount = editingAmountValue.trim();
+    const currentItem = items.find((it) => it.id === editingAmountItemId);
+
+    if (!currentItem) {
+      cancelEditItemAmount();
+      return;
+    }
+
+    if ((currentItem.amount ?? '') === nextAmount) {
+      cancelEditItemAmount();
+      return;
+    }
+
+    const nextItems = items.map((it) =>
+      it.id === editingAmountItemId ? { ...it, amount: nextAmount } : it
+    );
+    setItems(nextItems);
+    cancelEditItemAmount();
     scheduleSave(groups, nextItems);
   }
 
@@ -471,6 +513,8 @@ export default function ShoppingList() {
   // ------- render helpers
 
   function renderItemRow(it: EinkaufsItem) {
+    const isEditingAmount = editingAmountItemId === it.id;
+
     return (
       <Card key={it.id} withBorder radius="md" p="sm">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
@@ -486,11 +530,45 @@ export default function ShoppingList() {
               >
                 {it.name}
               </Text>
-              {it.amount?.trim() ? (
-                <Text size="sm" c="dimmed">
-                  {it.amount}
-                </Text>
-              ) : null}
+
+              {isEditingAmount ? (
+                <TextInput
+                  value={editingAmountValue}
+                  placeholder="Menge"
+                  size="xs"
+                  autoFocus
+                  onChange={(e) => setEditingAmountValue(e.currentTarget.value)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onBlur={commitEditItemAmount}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitEditItemAmount();
+                    }
+                    if (e.key === 'Escape') {
+                      cancelEditItemAmount();
+                    }
+                  }}
+                />
+              ) : (
+                <Group gap={4} wrap="nowrap">
+                  <Text size="sm" c="dimmed">
+                    {it.amount?.trim() ? it.amount : 'Keine Menge'}
+                  </Text>
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startEditItemAmount(it);
+                    }}
+                    aria-label="Menge bearbeiten"
+                  >
+                    <IconEdit size={14} />
+                  </ActionIcon>
+                </Group>
+              )}
             </div>
           </Group>
 

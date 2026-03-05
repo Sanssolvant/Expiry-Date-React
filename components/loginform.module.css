@@ -31,33 +31,140 @@
   width: 100%;
 }
 
-/* Rechte Seite – Bild */
+/* Rechte Seite – Landing/Visual */
 .imageSide {
   flex: 1;
-  position: relative;           /* ✅ wichtig: damit ::after nur rechts wirkt */
+  position: relative;
   overflow: hidden;
-
-  background-image: url('/img/hintergrund.png');
-  background-repeat: no-repeat;
-  background-position: center right;
-  background-size: cover;       /* ✅ wirkt “hero”, ohne den blauen Balken */
-
-  background-color: #0b3c5d;    /* fallback */
+  display: flex;
+  align-items: center;
+  padding: 56px;
+  background:
+    radial-gradient(900px 700px at 15% 20%,
+      rgba(34, 139, 230, 0.55),
+      transparent 60%),
+    radial-gradient(700px 520px at 85% 25%,
+      rgba(18, 184, 134, 0.45),
+      transparent 55%),
+    radial-gradient(900px 640px at 55% 85%,
+      rgba(132, 94, 247, 0.35),
+      transparent 60%),
+    linear-gradient(135deg,
+      light-dark(#f7fbff, #0b1220),
+      light-dark(#eef6ff, #070b14));
 }
 
-/* Overlay nur auf der rechten Seite */
+/* weiche “Blobs” + leichte Struktur */
+.imageSide::before {
+  content: '';
+  position: absolute;
+  inset: -120px;
+  background:
+    radial-gradient(closest-side at 20% 30%, rgba(255, 255, 255, 0.55), transparent 65%),
+    radial-gradient(closest-side at 80% 55%, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(closest-side at 55% 80%, rgba(255, 255, 255, 0.25), transparent 60%);
+  filter: blur(18px);
+  opacity: light-dark(0.65, 0.18);
+  transform: rotate(8deg);
+}
+
+/* leichtes Dunkel-Overlay für bessere Lesbarkeit im Dark Mode */
 .imageSide::after {
   content: '';
   position: absolute;
   inset: 0;
-  pointer-events: none;         /* ✅ Overlay darf nie Klicks fressen */
-  background: linear-gradient(
-    to left,
-    rgba(0, 0, 0, 0.08),
-    rgba(0, 0, 0, 0.25)
+  pointer-events: none;
+  background: light-dark(
+    linear-gradient(90deg, rgba(255, 255, 255, 0.0), rgba(255, 255, 255, 0.0)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.28))
   );
 }
 
+.heroContent {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+}
+
+.badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  background: light-dark(rgba(34, 139, 230, 0.12), rgba(34, 139, 230, 0.18));
+  border: 1px solid light-dark(rgba(34, 139, 230, 0.25), rgba(34, 139, 230, 0.30));
+}
+
+.heroTitle {
+  margin-top: 0px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-size: clamp(28px, 3.2vw, 44px);
+}
+
+.heroAccent {
+  display: inline;
+  background: linear-gradient(90deg, #5ad7ff, #c77dff);
+
+  background-clip: text;
+  -webkit-background-clip: text;
+
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.heroSubtitle {
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.heroList {
+  margin: 18px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.heroCards {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.heroCard {
+  padding: 14px 14px;
+  border-radius: 16px;
+  background: light-dark(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.06));
+  border: 1px solid light-dark(rgba(15, 23, 42, 0.08), rgba(255, 255, 255, 0.12));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10);
+  backdrop-filter: blur(10px);
+}
+
+.heroFootnote {
+  margin-top: 18px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+
+
+/* Tablet */
+@media (max-width: 1100px) {
+  .imageSide {
+    padding: 40px;
+  }
+
+  .heroCards {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* 📱 Mobile */
 @media (max-width: 768px) {

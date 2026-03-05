@@ -38,6 +38,26 @@ services:
     command: sh -lc "yarn prisma migrate deploy && yarn start -H 0.0.0.0 -p 3000"
     networks: [trackshelf-prod]
 
+  reminder-cron:
+    image: curlimages/curl:8.11.1
+    container_name: trackshelf-prod-reminder-cron
+    restart: unless-stopped
+    env_file:
+      - .env.docker.prod
+    depends_on:
+      app:
+        condition: service_healthy
+    command: >
+      sh -lc '
+        while true; do
+          echo "[reminder] $(date -Iseconds)";
+          curl -fsS -X POST http://app:3000/api/reminders/send \
+            -H "x-reminder-secret: ${REMINDER_CRON_SECRET}" || true;
+          sleep 60;
+        done
+      '
+    networks: [trackshelf-prod]
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: trackshelf-prod-tunnel

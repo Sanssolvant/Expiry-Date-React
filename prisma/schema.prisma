@@ -105,11 +105,19 @@ model Produkt {
 }
 
 model UserSettings {
-  id               String @id @default(cuid())
-  userId           String @unique
-  warnLevelBald    Int    @default(3) // z.B. 3 Tage
-  warnLevelExpired Int    @default(0) // z.B. 0 Tage = abgelaufen
-  user             User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String    @id @default(cuid())
+  userId                   String    @unique
+  warnLevelBald            Int       @default(3) // z.B. 3 Tage
+  warnLevelExpired         Int       @default(0) // z.B. 0 Tage = abgelaufen
+  emailRemindersEnabled    Boolean   @default(false)
+  emailReminderFrequencyDays Int     @default(1) // legacy
+  emailReminderHour        Int       @default(8) // legacy
+  emailReminderTime        String    @default("08:00")
+  emailReminderIntervalValue Int     @default(1)
+  emailReminderIntervalUnit String   @default("day") // day | week | month
+  emailReminderTimeZone    String    @default("Europe/Zurich")
+  emailReminderLastSentAt  DateTime?
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("userSettings")
 }

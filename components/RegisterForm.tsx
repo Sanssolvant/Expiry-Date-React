@@ -181,8 +181,6 @@ export function RegisterForm() {
           </form>
         </Paper>
       </div>
-
-      <div className={classes.imageSide} />
     </div>
   );
 }

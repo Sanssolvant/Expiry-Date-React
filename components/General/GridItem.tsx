@@ -1,4 +1,4 @@
-import { IconCalendar, IconPhoto, IconTrash } from '@tabler/icons-react';
+import { IconCalendar, IconPhoto, IconShoppingCartPlus, IconTrash } from '@tabler/icons-react';
 import {
   alpha,
   Badge,
@@ -10,10 +10,10 @@ import {
   Image,
   Stack,
   Text,
+  useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
 import { WarnLevel } from '@/app/types';
-import { useMantineColorScheme } from '@mantine/core';
 
 type Props = {
   image: string;
@@ -26,6 +26,8 @@ type Props = {
   warnLevel: WarnLevel;
   isDragging?: boolean;
   onDelete?: () => void;
+  onAddToShoppingList?: () => void;
+  addToShoppingListLoading?: boolean;
 };
 
 function warnBadge(w: WarnLevel) {
@@ -45,6 +47,8 @@ export function GridItem({
   warnLevel,
   isDragging,
   onDelete,
+  onAddToShoppingList,
+  addToShoppingListLoading,
 }: Props) {
   const { colorScheme } = useMantineColorScheme(); // 'light' | 'dark'
   const theme = useMantineTheme();
@@ -78,7 +82,7 @@ export function GridItem({
       }}
     >
       {/* Image */}
-      <Box pos="relative" h={130} style={{overflow: 'hidden'}}>
+      <Box pos="relative" h={130} style={{ overflow: 'hidden' }}>
         {image && image.trim() !== '' ? (
           <Image
             src={image}
@@ -188,23 +192,43 @@ export function GridItem({
 
         {/* Footer */}
         <Box mt="auto" pt="sm">
-          {onDelete && (
-            <Button
-              variant="outline"
-              size="sm"
-              fullWidth
-              leftSection={<IconTrash size={16} />}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.();
-              }}
-            >
-              Löschen
-            </Button>
-          )}
+          <Group grow>
+            {onAddToShoppingList && (
+              <Button
+                variant="light"
+                size="sm"
+                leftSection={<IconShoppingCartPlus size={16} />}
+                loading={addToShoppingListLoading}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToShoppingList();
+                }}
+              >
+                Auf Liste
+              </Button>
+            )}
+
+            {onDelete && (
+              <Button
+                variant="outline"
+                color="red"
+                size="sm"
+                leftSection={<IconTrash size={16} />}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.();
+                }}
+              >
+                Löschen
+              </Button>
+            )}
+          </Group>
         </Box>
       </Stack>
     </Card>
