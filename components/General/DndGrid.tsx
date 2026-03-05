@@ -13,6 +13,7 @@ import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import {
   IconCheck,
+  IconChartBar,
   IconDeviceFloppy,
   IconHandMove,
   IconPlus,
@@ -47,6 +48,7 @@ import { GridItem } from './GridItem';
 import { SpeechCreateModal } from './SpeechCreateModal';
 import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { PhotoCreateModal } from './PhotoCreateModal';
+import { InventoryStatsModal } from './InventoryStatsModal';
 
 export type CardData = {
   id: string;
@@ -70,6 +72,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [addingToShoppingListIds, setAddingToShoppingListIds] = useState<string[]>([]);
@@ -424,6 +427,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         initialData={editingCard}
       />
 
+      <InventoryStatsModal opened={statsOpen} onClose={() => setStatsOpen(false)} cards={cards} />
+
       {/* Toolbar */}
       <Box
         mt="md"
@@ -466,6 +471,16 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             ) : (
               <>
                 <IconDeviceFloppy size={18} style={{ marginRight: 10 }} /> Alle speichern
+              </>
+            )}
+          </Button>
+
+          <Button variant="outline" onClick={() => setStatsOpen(true)}>
+            {isMobile ? (
+              <IconChartBar size={18} />
+            ) : (
+              <>
+                <IconChartBar size={18} style={{ marginRight: 10 }} /> Statistik
               </>
             )}
           </Button>
