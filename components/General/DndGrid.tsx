@@ -44,7 +44,6 @@ import { parseAblauf, WarnLevel, warnPriority, type Filters } from '@/app/types'
 import { CardCreateModal } from './CardCreateModal';
 import { CardFilterMenu } from './CardFilterMenu';
 import { GridItem } from './GridItem';
-import { SettingsMenu } from './SettingsMenu';
 import { SpeechCreateModal } from './SpeechCreateModal';
 import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { PhotoCreateModal } from './PhotoCreateModal';
@@ -61,7 +60,12 @@ export type CardData = {
   warnLevel?: WarnLevel;
 };
 
-export default function DndGrid() {
+type DndGridProps = {
+  warnBaldAb: number;
+  warnAbgelaufenAb: number;
+};
+
+export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
@@ -69,8 +73,6 @@ export default function DndGrid() {
 
   const [loading, setLoading] = useState(false);
   const [addingToShoppingListIds, setAddingToShoppingListIds] = useState<string[]>([]);
-  const [warnBaldAb, setWarnBaldAb] = useState(3);
-  const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(0);
 
   const [rawCards, setRawCards] = useState<Omit<CardData, 'warnLevel'>[]>([]);
   const [speechOpen, setSpeechOpen] = useState(false);
@@ -131,24 +133,6 @@ export default function DndGrid() {
     };
 
     loadCards();
-  }, []);
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const res = await fetch('/api/user-settings', { method: 'GET', credentials: 'include' });
-
-        if (res.ok) {
-          const settings = await res.json();
-          if (settings.warnLevelBald != null) setWarnBaldAb(settings.warnLevelBald);
-          if (settings.warnLevelExpired != null) setWarnAbgelaufenAb(settings.warnLevelExpired);
-        }
-      } catch (error) {
-        console.error('❌ Fehler beim Laden der Einstellungen:', error);
-      }
-    };
-
-    loadSettings();
   }, []);
 
   const filteredCards = useMemo(() => {
@@ -488,14 +472,6 @@ export default function DndGrid() {
 
           <CardFilterMenu iconOnly={isMobile} filters={filters} setFilters={setFilters} />
 
-          <SettingsMenu
-            iconOnly={isMobile}
-            baldAb={warnBaldAb}
-            abgelaufenAb={warnAbgelaufenAb}
-            setBaldAb={setWarnBaldAb}
-            setAbgelaufenAb={setWarnAbgelaufenAb}
-          />
-
           <Group gap="xs" wrap="nowrap">
             <TextInput
               leftSection={<IconSearch size={16} />}
@@ -631,3 +607,4 @@ function SortableCard({
     </motion.div>
   );
 }
+

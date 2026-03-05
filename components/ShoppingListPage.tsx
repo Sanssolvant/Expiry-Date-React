@@ -1,16 +1,36 @@
 'use client';
 
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { AppShell, Button, Group, Text } from '@mantine/core';
 import Link from 'next/link';
 import ShoppingList from './General/ShoppingList';
-import { SignOutButton } from './General/SignOutButton';
 import { Logo } from './General/Logo';
-
-// Optional: wenn du einen SignOutButton hast, importiere ihn
-// import SignOutButton from '@/components/SignOutButton';
+import { UserProfileMenu } from './General/UserProfileMenu';
 
 export function ShoppingListPage() {
+  const [warnBaldAb, setWarnBaldAb] = useState(3);
+  const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(0);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await fetch('/api/user-settings', { method: 'GET', credentials: 'include' });
+
+        if (!res.ok) {
+          return;
+        }
+
+        const settings = await res.json();
+        if (settings.warnLevelBald != null) setWarnBaldAb(Number(settings.warnLevelBald));
+        if (settings.warnLevelExpired != null) setWarnAbgelaufenAb(Number(settings.warnLevelExpired));
+      } catch {
+        // use default values
+      }
+    };
+
+    loadSettings();
+  }, []);
+
   return (
     <AppShell header={{ height: { base: 60, md: 70, lg: 80 } }} padding="md">
       <AppShell.Header px="md">
@@ -35,7 +55,12 @@ export function ShoppingListPage() {
             <Button component={Link} href="/dashboard" variant="light">
               Dashboard
             </Button>
-            <SignOutButton />
+            <UserProfileMenu
+              baldAb={warnBaldAb}
+              abgelaufenAb={warnAbgelaufenAb}
+              setBaldAb={setWarnBaldAb}
+              setAbgelaufenAb={setWarnAbgelaufenAb}
+            />
           </Group>
         </Group>
       </AppShell.Header>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { IconAlertTriangle, IconMail, IconSettings } from '@tabler/icons-react';
 import {
   alpha,
@@ -25,6 +25,10 @@ type Props = {
   setBaldAb: (n: number) => void;
   setAbgelaufenAb: (n: number) => void;
   iconOnly?: boolean;
+  renderTrigger?: (open: () => void) => ReactNode;
+  hideTrigger?: boolean;
+  opened?: boolean;
+  onOpenedChange?: (opened: boolean) => void;
 };
 
 const intervalUnitData = [
@@ -43,12 +47,16 @@ export function SettingsMenu({
   setBaldAb,
   setAbgelaufenAb,
   iconOnly,
+  renderTrigger,
+  hideTrigger,
+  opened,
+  onOpenedChange,
 }: Props) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [opened, setOpened] = useState(false);
+  const [internalOpened, setInternalOpened] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -62,8 +70,17 @@ export function SettingsMenu({
   const [localIntervalUnit, setLocalIntervalUnit] = useState<'day' | 'week' | 'month'>('day');
   const [localReminderTimeZone, setLocalReminderTimeZone] = useState('Europe/Zurich');
 
+  const isOpened = opened ?? internalOpened;
+
+  const setIsOpened = (next: boolean) => {
+    if (opened === undefined) {
+      setInternalOpened(next);
+    }
+    onOpenedChange?.(next);
+  };
+
   useEffect(() => {
-    if (!opened) {
+    if (!isOpened) {
       return;
     }
 
@@ -122,7 +139,7 @@ export function SettingsMenu({
     return () => {
       cancelled = true;
     };
-  }, [opened, baldAb, abgelaufenAb]);
+  }, [isOpened, baldAb, abgelaufenAb]);
 
   const tileBg = isDark ? alpha(theme.colors.dark[5], 0.35) : alpha(theme.colors.gray[1], 0.6);
   const tileBorder = isDark ? alpha(theme.colors.dark[2], 0.35) : theme.colors.gray[3];
@@ -182,7 +199,7 @@ export function SettingsMenu({
       setBaldAb(Number(localBald));
       setAbgelaufenAb(Number(localExpired));
       setSuccess(true);
-      setTimeout(() => setOpened(false), 900);
+      setTimeout(() => setIsOpened(false), 900);
     } catch (err: any) {
       setError(err?.message || 'Speichern fehlgeschlagen');
     } finally {
@@ -192,20 +209,24 @@ export function SettingsMenu({
 
   return (
     <>
-      <Button variant="default" onClick={() => setOpened(true)}>
-        {iconOnly ? (
-          <IconSettings size={18} />
-        ) : (
-          <>
-            <IconSettings size={18} style={{ marginRight: 10 }} />
-            Einstellungen
-          </>
-        )}
-      </Button>
+      {hideTrigger ? null : renderTrigger ? (
+        renderTrigger(() => setIsOpened(true))
+      ) : (
+        <Button variant="default" onClick={() => setIsOpened(true)}>
+          {iconOnly ? (
+            <IconSettings size={18} />
+          ) : (
+            <>
+              <IconSettings size={18} style={{ marginRight: 10 }} />
+              Einstellungen
+            </>
+          )}
+        </Button>
+      )}
 
       <Modal
-        opened={opened}
-        onClose={() => setOpened(false)}
+        opened={isOpened}
+        onClose={() => setIsOpened(false)}
         centered
         size="md"
         radius="xl"
@@ -346,7 +367,7 @@ export function SettingsMenu({
           ) : null}
 
           <Group justify="flex-end" mt="xs">
-            <Button variant="default" onClick={() => setOpened(false)}>
+            <Button variant="default" onClick={() => setIsOpened(false)}>
               Schliessen
             </Button>
             <Button onClick={handleSave} loading={saving}>
