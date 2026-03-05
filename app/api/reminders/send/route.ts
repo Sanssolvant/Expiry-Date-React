@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
 import prisma from '@/app/lib/prisma';
 import { sendEmail } from '@/app/lib/send-email';
+import { ALLOWED_INTERVAL_UNITS, USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 
 export const runtime = 'nodejs';
 
@@ -25,7 +26,7 @@ type ReminderSetting = {
 };
 
 function parseTimeToMinutes(time: string) {
-  const safe = /^([01]\d|2[0-3]):([0-5]\d)$/.test(time) ? time : '08:00';
+  const safe = /^([01]\d|2[0-3]):([0-5]\d)$/.test(time) ? time : USER_SETTINGS_DEFAULTS.emailReminderTime;
   const [h, m] = safe.split(':').map(Number);
   return h * 60 + m;
 }
@@ -120,11 +121,11 @@ function shouldSendReminder(settings: ReminderSetting, now: Date) {
     return false;
   }
 
-  const timeZone = settings.emailReminderTimeZone || 'Europe/Zurich';
+  const timeZone = settings.emailReminderTimeZone || USER_SETTINGS_DEFAULTS.emailReminderTimeZone;
   const reminderTime =
     typeof settings.emailReminderTime === 'string' && settings.emailReminderTime
       ? settings.emailReminderTime
-      : `${String(settings.emailReminderHour ?? 8).padStart(2, '0')}:00`;
+      : `${String(settings.emailReminderHour ?? USER_SETTINGS_DEFAULTS.emailReminderHour).padStart(2, '0')}:00`;
 
   if (!hasTimePassedToday(now, timeZone, reminderTime)) {
     return false;
@@ -142,9 +143,9 @@ function shouldSendReminder(settings: ReminderSetting, now: Date) {
       1
     )
   );
-  const intervalUnit = ['day', 'week', 'month'].includes(settings.emailReminderIntervalUnit || '')
+  const intervalUnit = ALLOWED_INTERVAL_UNITS.includes((settings.emailReminderIntervalUnit || '') as IntervalUnit)
     ? (settings.emailReminderIntervalUnit as IntervalUnit)
-    : 'day';
+    : USER_SETTINGS_DEFAULTS.emailReminderIntervalUnit;
 
   return hasIntervalElapsed(
     settings.emailReminderLastSentAt,

@@ -52,14 +52,7 @@ export async function POST(req: NextRequest) {
     await prisma.shoppingItem.deleteMany({ where: { userId } });
     await prisma.shoppingGroup.deleteMany({ where: { userId } });
 
-    // ✅ Gruppen speichern
-    const groupData = validGroups.map((g: any, idx: number) => ({
-      userId,
-      name: g.name.trim(),
-      order: Number.isFinite(Number(g.order)) ? Number(g.order) : idx,
-    }));
-
-    // createMany gibt keine IDs zurück -> wir erzeugen IDs im Client (empfohlen).
+    // ✅ Gruppen speichern. createMany gibt keine IDs zurück -> wir erzeugen IDs im Client (empfohlen).
     // Falls du IDs im Client setzt, kannst du hier auch "id: g.id" mitschicken.
     // Ich unterstütze beides:
     const groupDataWithIds = validGroups.map((g: any, idx: number) => ({

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -33,7 +33,6 @@ import {
 import {
   SortableContext,
   useSortable,
-  arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
@@ -71,7 +70,7 @@ function DroppableContainer({
   children,
 }: {
   id: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
@@ -92,12 +91,12 @@ function SortableItemWrapper({
   children,
 }: {
   id: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
 
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
@@ -110,7 +109,6 @@ function SortableItemWrapper({
     </div>
   );
 }
-
 
 function uid() {
   // crypto.randomUUID() ist in modernen Browsern verfügbar
@@ -229,7 +227,6 @@ export default function ShoppingList() {
 
     // 2) Position berechnen
     const toIdsAfterMove = (() => {
-      const fromNow = fromContainer === toContainer ? fromIds : fromIds.filter((id) => id !== activeId);
       const toNow = fromContainer === toContainer ? fromIds : toIds;
 
       // Insert index

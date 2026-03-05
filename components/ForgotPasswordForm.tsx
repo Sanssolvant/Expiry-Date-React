@@ -18,7 +18,7 @@ export function ForgotPasswordForm() {
     },
   });
 
-  const handleSubmit = async (values: typeof form.values) => {
+  const handleSubmit = async (_values: typeof form.values) => {
     setLoading(true);
 
     // deine bestehende Logik bleibt hier

@@ -2,22 +2,11 @@ import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth';
 import prisma from '@/app/lib/prisma';
-
-const ALLOWED_INTERVAL_UNITS = ['day', 'week', 'month'] as const;
-
-type IntervalUnit = (typeof ALLOWED_INTERVAL_UNITS)[number];
-
-const DEFAULTS = {
-  warnLevelBald: 3,
-  warnLevelExpired: 0,
-  emailRemindersEnabled: false,
-  emailReminderFrequencyDays: 1, // legacy
-  emailReminderHour: 8, // legacy
-  emailReminderTime: '08:00',
-  emailReminderIntervalValue: 1,
-  emailReminderIntervalUnit: 'day' as IntervalUnit,
-  emailReminderTimeZone: 'Europe/Zurich',
-};
+import {
+  ALLOWED_INTERVAL_UNITS,
+  type IntervalUnit,
+  USER_SETTINGS_DEFAULTS,
+} from '@/app/lib/user-settings';
 
 function toInt(val: unknown): number | undefined {
   if (val === null || val === undefined || val === '') {
@@ -59,7 +48,7 @@ export async function GET() {
     });
 
     if (!settings) {
-      return NextResponse.json(DEFAULTS);
+      return NextResponse.json(USER_SETTINGS_DEFAULTS);
     }
 
     return NextResponse.json(settings);
@@ -106,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (warnLevelExpired !== undefined) {
-      const maxExpired = (warnLevelBald ?? DEFAULTS.warnLevelBald) - 1;
+      const maxExpired = (warnLevelBald ?? USER_SETTINGS_DEFAULTS.warnLevelBald) - 1;
       if (warnLevelExpired < 0 || warnLevelExpired > maxExpired) {
         return NextResponse.json(
           { error: `warnLevelExpired muss zwischen 0 und ${maxExpired} liegen.` },
@@ -139,9 +128,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const finalIntervalValue = emailReminderIntervalValue ?? DEFAULTS.emailReminderIntervalValue;
-    const finalIntervalUnit = emailReminderIntervalUnit ?? DEFAULTS.emailReminderIntervalUnit;
-    const finalTime = emailReminderTime ?? DEFAULTS.emailReminderTime;
+    const finalIntervalValue = emailReminderIntervalValue ?? USER_SETTINGS_DEFAULTS.emailReminderIntervalValue;
+    const finalIntervalUnit = emailReminderIntervalUnit ?? USER_SETTINGS_DEFAULTS.emailReminderIntervalUnit;
+    const finalTime = emailReminderTime ?? USER_SETTINGS_DEFAULTS.emailReminderTime;
 
     const updateData: Record<string, unknown> = {};
     if (warnLevelBald !== undefined) {
@@ -175,15 +164,15 @@ export async function POST(req: NextRequest) {
 
     const createData: any = {
       userId: session.user.id,
-      warnLevelBald: warnLevelBald ?? DEFAULTS.warnLevelBald,
-      warnLevelExpired: warnLevelExpired ?? DEFAULTS.warnLevelExpired,
-      emailRemindersEnabled: emailRemindersEnabled ?? DEFAULTS.emailRemindersEnabled,
+      warnLevelBald: warnLevelBald ?? USER_SETTINGS_DEFAULTS.warnLevelBald,
+      warnLevelExpired: warnLevelExpired ?? USER_SETTINGS_DEFAULTS.warnLevelExpired,
+      emailRemindersEnabled: emailRemindersEnabled ?? USER_SETTINGS_DEFAULTS.emailRemindersEnabled,
       emailReminderTime: finalTime,
       emailReminderIntervalValue: finalIntervalValue,
       emailReminderIntervalUnit: finalIntervalUnit,
       emailReminderFrequencyDays: intervalToLegacyDays(finalIntervalValue, finalIntervalUnit),
       emailReminderHour: Number(finalTime.split(':')[0]),
-      emailReminderTimeZone: emailReminderTimeZone ?? DEFAULTS.emailReminderTimeZone,
+      emailReminderTimeZone: emailReminderTimeZone ?? USER_SETTINGS_DEFAULTS.emailReminderTimeZone,
     };
 
     const updated = await prisma.userSettings.upsert({

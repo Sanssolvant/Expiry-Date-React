@@ -18,6 +18,7 @@ import {
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
+import { USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 
 type Props = {
   baldAb: number;
@@ -65,10 +66,12 @@ export function SettingsMenu({
   const [localExpired, setLocalExpired] = useState<number | ''>(abgelaufenAb);
 
   const [localReminderEnabled, setLocalReminderEnabled] = useState(false);
-  const [localReminderTime, setLocalReminderTime] = useState('08:00');
+  const [localReminderTime, setLocalReminderTime] = useState(USER_SETTINGS_DEFAULTS.emailReminderTime);
   const [localIntervalValue, setLocalIntervalValue] = useState<number | ''>(1);
   const [localIntervalUnit, setLocalIntervalUnit] = useState<'day' | 'week' | 'month'>('day');
-  const [localReminderTimeZone, setLocalReminderTimeZone] = useState('Europe/Zurich');
+  const [localReminderTimeZone, setLocalReminderTimeZone] = useState(
+    USER_SETTINGS_DEFAULTS.emailReminderTimeZone
+  );
 
   const isOpened = opened ?? internalOpened;
 
@@ -115,7 +118,7 @@ export function SettingsMenu({
         const loadedTime =
           typeof settings.emailReminderTime === 'string' && isValidTime(settings.emailReminderTime)
             ? settings.emailReminderTime
-            : `${String(Number(settings.emailReminderHour ?? 8)).padStart(2, '0')}:00`;
+            : `${String(Number(settings.emailReminderHour ?? USER_SETTINGS_DEFAULTS.emailReminderHour)).padStart(2, '0')}:00`;
         setLocalReminderTime(loadedTime);
 
         const loadedIntervalValue = Number(settings.emailReminderIntervalValue ?? 1);
@@ -128,7 +131,9 @@ export function SettingsMenu({
             : 'day';
         setLocalIntervalUnit(loadedUnit);
 
-        setLocalReminderTimeZone(settings.emailReminderTimeZone || 'Europe/Zurich');
+        setLocalReminderTimeZone(
+          settings.emailReminderTimeZone || USER_SETTINGS_DEFAULTS.emailReminderTimeZone
+        );
       } catch {
         // keep defaults
       }
