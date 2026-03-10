@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     });
 
     // ✅ Neue Karten speichern
-    const data = validCards.map((card) => ({
+    const data: any[] = validCards.map((card, index) => ({
       userId,
       name: card.name,
       menge: Number(card.menge),
@@ -59,9 +59,10 @@ export async function POST(req: NextRequest) {
       erfasstAm: formatDateToDb(card.erfasstAm),
       kategorie: card.kategorie,
       bildUrl: card.image || '',
+      sortOrder: index,
     }));
 
-    const result = await prisma.produkt.createMany({ data });
+    const result = await prisma.produkt.createMany({ data: data as any });
 
     return NextResponse.json({ success: true, count: result.count });
   } catch (error: any) {

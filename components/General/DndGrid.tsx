@@ -9,7 +9,13 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   IconChefHat,
@@ -26,11 +32,18 @@ import {
 import { motion } from 'framer-motion';
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
+  Card,
+  Center,
   Group,
+  Image,
+  Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
+  Text,
   TextInput,
   Tooltip,
   useMantineColorScheme,
@@ -69,6 +82,8 @@ type DndGridProps = {
   warnAbgelaufenAb: number;
 };
 
+type LayoutMode = 'cards' | 'list' | 'compact';
+
 export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
@@ -85,6 +100,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('cards');
+  const [uiSettingsLoaded, setUiSettingsLoaded] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -110,6 +127,64 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   }, [rawCards, warnBaldAb, warnAbgelaufenAb]);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUiSettings = async () => {
+      try {
+        const res = await fetch('/api/user-settings', { method: 'GET', credentials: 'include' });
+        if (!res.ok) {
+          return;
+        }
+
+        const settings = await res.json();
+        if (cancelled) {
+          return;
+        }
+
+        const nextLayout = settings?.inventoryLayoutMode;
+        if (nextLayout === 'cards' || nextLayout === 'list' || nextLayout === 'compact') {
+          setLayoutMode(nextLayout);
+        }
+
+        const nextSort = settings?.inventorySortMode;
+        if (nextSort === 'manual' || nextSort === 'expiry_asc' || nextSort === 'expiry_desc') {
+          setFilters((prev) => ({ ...prev, sort: nextSort }));
+        }
+      } catch {
+        // fallback: local defaults
+      } finally {
+        if (!cancelled) {
+          setUiSettingsLoaded(true);
+        }
+      }
+    };
+
+    loadUiSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!uiSettingsLoaded) {
+      return;
+    }
+
+    fetch('/api/user-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        inventoryLayoutMode: layoutMode,
+        inventorySortMode: filters.sort,
+      }),
+    }).catch(() => {
+      // non-blocking persistence
+    });
+  }, [uiSettingsLoaded, layoutMode, filters.sort]);
 
   useEffect(() => {
     const loadCards = async () => {
@@ -197,18 +272,36 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   }, [cards, filters]);
 
   const handleDragEnd = (event: DragEndEvent) => {
-    // ✅ Wenn Sortierung aktiv ist, lassen wir Drag nicht zu
+    // DnD nur im manuellen Sortiermodus
     if (filters.sort !== 'manual') return;
 
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = cards.findIndex((c) => c.id === active.id);
-    const newIndex = cards.findIndex((c) => c.id === over.id);
+    const activeId = String(active.id);
+    const overId = String(over.id);
 
-    if (oldIndex !== -1 && newIndex !== -1) {
-      setRawCards((prev) => arrayMove(prev, oldIndex, newIndex));
-    }
+    setRawCards((prev) => {
+      const oldIndex = prev.findIndex((c) => c.id === activeId);
+      const newIndex = prev.findIndex((c) => c.id === overId);
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return prev;
+      }
+
+      const next = arrayMove(prev, oldIndex, newIndex);
+
+      saveCardsToDB(next, true).catch(() => {
+        notifications.show({
+          title: 'Auto-Speichern fehlgeschlagen',
+          message: 'Neue Reihenfolge wurde lokal gesetzt. Bitte spaeter "Alle speichern" druecken.',
+          color: 'red',
+          icon: <IconX size={18} />,
+        });
+      });
+
+      return next;
+    });
   };
 
   const saveCardsToDB = async (cardsToSave: Omit<CardData, 'warnLevel'>[], silent = false) => {
@@ -359,6 +452,9 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         : <IconSortAscending size={18} />;
 
   const sortColor = filters.sort === 'manual' ? 'green' : 'gray';
+  const dndDisabled = filters.sort !== 'manual';
+  const sortableStrategy =
+    layoutMode === 'list' ? verticalListSortingStrategy : rectSortingStrategy;
 
   return (
     <Stack>
@@ -505,6 +601,17 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
           <CardFilterMenu iconOnly={isMobile} filters={filters} setFilters={setFilters} />
 
+          <SegmentedControl
+            value={layoutMode}
+            onChange={(value) => setLayoutMode(value as LayoutMode)}
+            size={isMobile ? 'xs' : 'sm'}
+            data={[
+              { label: 'Karten', value: 'cards' },
+              { label: 'Liste', value: 'list' },
+              { label: 'Kompakt', value: 'compact' },
+            ]}
+          />
+
           <Group gap="xs" wrap="nowrap">
             <TextInput
               leftSection={<IconSearch size={16} />}
@@ -543,7 +650,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         </Group>
       </Box>
 
-      {/* Grid */}
+      {/* Layout */}
       <Box
         p="md"
         style={{
@@ -552,35 +659,71 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         }}
       >
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={filteredCards.map((c) => c.id)} strategy={rectSortingStrategy}>
-            <SimpleGrid
-              cols={{ base: 1, sm: 2, md: 4, lg: 6 }}
-              spacing={{ base: 12, sm: 16, md: 20 }}
-              verticalSpacing={{ base: 'md', sm: 'lg' }}
-            >
-              {filteredCards.map((card) => (
-                <SortableCard
-                  key={card.id}
-                  card={card}
-                  onDelete={handleDelete}
-                  onAddToShoppingList={handleAddToShoppingList}
-                  addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
-                  onClick={handleCardClick}
-                  dndDisabled={filters.sort !== 'manual'}
-                />
-              ))}
+          <SortableContext items={filteredCards.map((c) => c.id)} strategy={sortableStrategy}>
+            {layoutMode === 'cards' ? (
+              <SimpleGrid
+                cols={{ base: 1, sm: 2, md: 4, lg: 6 }}
+                spacing={{ base: 12, sm: 16, md: 20 }}
+                verticalSpacing={{ base: 'md', sm: 'lg' }}
+              >
+                {filteredCards.map((card) => (
+                  <SortableCard
+                    key={card.id}
+                    card={card}
+                    onDelete={handleDelete}
+                    onAddToShoppingList={handleAddToShoppingList}
+                    addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                    onClick={handleCardClick}
+                    dndDisabled={dndDisabled}
+                  />
+                ))}
 
-              <Box
-                style={{
-                  minHeight: 200,
-                  borderRadius: 8,
-                  border: '2px dashed #ccc',
-                  backgroundColor: isDark ? theme.colors.dark[3] : theme.colors.gray[2],
-                }}
-              />
-            </SimpleGrid>
+                <Box
+                  style={{
+                    minHeight: 200,
+                    borderRadius: 8,
+                    border: '2px dashed #ccc',
+                    backgroundColor: isDark ? theme.colors.dark[3] : theme.colors.gray[2],
+                  }}
+                />
+              </SimpleGrid>
+            ) : layoutMode === 'list' ? (
+              <Stack gap="sm">
+                {filteredCards.map((card) => (
+                  <SortableListItem
+                    key={card.id}
+                    card={card}
+                    onDelete={handleDelete}
+                    onAddToShoppingList={handleAddToShoppingList}
+                    addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                    onClick={handleCardClick}
+                    dndDisabled={dndDisabled}
+                  />
+                ))}
+              </Stack>
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="sm">
+                {filteredCards.map((card) => (
+                  <SortableCompactItem
+                    key={card.id}
+                    card={card}
+                    onDelete={handleDelete}
+                    onAddToShoppingList={handleAddToShoppingList}
+                    addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                    onClick={handleCardClick}
+                    dndDisabled={dndDisabled}
+                  />
+                ))}
+              </SimpleGrid>
+            )}
           </SortableContext>
         </DndContext>
+
+        {layoutMode !== 'cards' && filteredCards.length === 0 && (
+          <Text size="sm" c="dimmed">
+            Keine Produkte gefunden.
+          </Text>
+        )}
       </Box>
     </Stack>
   );
@@ -640,4 +783,250 @@ function SortableCard({
     </motion.div>
   );
 }
+
+function SortableListItem({
+  card,
+  onDelete,
+  onAddToShoppingList,
+  addToShoppingListLoading,
+  onClick,
+  dndDisabled,
+}: {
+  card: CardData;
+  onDelete: (id: string) => void;
+  onAddToShoppingList: (card: CardData) => void;
+  addToShoppingListLoading: boolean;
+  onClick: (card: CardData) => void;
+  dndDisabled: boolean;
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
+    id: card.id,
+    disabled: dndDisabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 100 : 'auto',
+    touchAction: 'pan-y' as const,
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...(dndDisabled ? {} : listeners)}
+    >
+      <InventoryListItem
+        card={card}
+        onDelete={onDelete}
+        onAddToShoppingList={onAddToShoppingList}
+        addToShoppingListLoading={addToShoppingListLoading}
+        onClick={onClick}
+      />
+    </motion.div>
+  );
+}
+
+function SortableCompactItem({
+  card,
+  onDelete,
+  onAddToShoppingList,
+  addToShoppingListLoading,
+  onClick,
+  dndDisabled,
+}: {
+  card: CardData;
+  onDelete: (id: string) => void;
+  onAddToShoppingList: (card: CardData) => void;
+  addToShoppingListLoading: boolean;
+  onClick: (card: CardData) => void;
+  dndDisabled: boolean;
+}) {
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
+    id: card.id,
+    disabled: dndDisabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 100 : 'auto',
+    touchAction: 'pan-y' as const,
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...(dndDisabled ? {} : listeners)}
+    >
+      <InventoryCompactItem
+        card={card}
+        onDelete={onDelete}
+        onAddToShoppingList={onAddToShoppingList}
+        addToShoppingListLoading={addToShoppingListLoading}
+        onClick={onClick}
+      />
+    </motion.div>
+  );
+}
+
+type InventoryItemProps = {
+  card: CardData;
+  onDelete: (id: string) => void;
+  onAddToShoppingList: (card: CardData) => void;
+  addToShoppingListLoading: boolean;
+  onClick: (card: CardData) => void;
+};
+
+function warnBadge(w: WarnLevel) {
+  if (w === WarnLevel.OK) return { color: 'green' as const, text: 'Frisch' };
+  if (w === WarnLevel.BALD) return { color: 'yellow' as const, text: 'Bald' };
+  return { color: 'red' as const, text: 'Abgelaufen' };
+}
+
+function InventoryListItem({
+  card,
+  onDelete,
+  onAddToShoppingList,
+  addToShoppingListLoading,
+  onClick,
+}: InventoryItemProps) {
+  const { colorScheme } = useMantineColorScheme();
+  const theme = useMantineTheme();
+  const isDark = colorScheme === 'dark';
+  const b = warnBadge(card.warnLevel ?? WarnLevel.OK);
+
+  return (
+    <Paper withBorder p="sm" radius="md" onClick={() => onClick(card)} style={{ cursor: 'pointer' }}>
+      <Group align="flex-start" gap="sm" wrap="nowrap">
+        {card.image && card.image.trim() !== '' ? (
+          <Image src={card.image} alt={card.name} h={72} w={72} radius="sm" fit="cover" />
+        ) : (
+          <Center
+            h={72}
+            w={72}
+            style={{
+              borderRadius: 8,
+              backgroundColor: isDark ? theme.colors.dark[6] : theme.colors.gray[1],
+            }}
+          >
+            <Text size="xs" c="dimmed">
+              Kein Bild
+            </Text>
+          </Center>
+        )}
+
+        <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+          <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
+            <Text fw={600} style={{ wordBreak: 'break-word' }}>
+              {card.name}
+            </Text>
+            <Badge color={b.color} variant="light">
+              {b.text}
+            </Badge>
+          </Group>
+
+          <Group gap="xs" wrap="wrap">
+            <Badge variant="outline">
+              {card.menge} {card.einheit}
+            </Badge>
+            <Badge variant="outline">{card.kategorie || 'Ohne Kategorie'}</Badge>
+          </Group>
+
+          <Text size="sm" c="dimmed" style={{ wordBreak: 'break-word' }}>
+            Erfasst: {card.erfasstAm} | Ablauf: {card.ablaufdatum}
+          </Text>
+
+          <Group gap="xs" wrap="wrap">
+            <Button
+              variant="light"
+              size="xs"
+              loading={addToShoppingListLoading}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToShoppingList(card);
+              }}
+            >
+              Auf Liste
+            </Button>
+            <Button
+              variant="outline"
+              color="red"
+              size="xs"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(card.id);
+              }}
+            >
+              Loeschen
+            </Button>
+          </Group>
+        </Stack>
+      </Group>
+    </Paper>
+  );
+}
+
+function InventoryCompactItem({
+  card,
+  onDelete,
+  onAddToShoppingList,
+  addToShoppingListLoading,
+  onClick,
+}: InventoryItemProps) {
+  const b = warnBadge(card.warnLevel ?? WarnLevel.OK);
+
+  return (
+    <Card withBorder radius="md" p="sm" onClick={() => onClick(card)} style={{ cursor: 'pointer' }}>
+      <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
+        <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+          <Text fw={600} size="sm" style={{ wordBreak: 'break-word' }}>
+            {card.name}
+          </Text>
+          <Text size="xs" c="dimmed" style={{ wordBreak: 'break-word' }}>
+            {card.menge} {card.einheit} | {card.kategorie || 'Ohne Kategorie'}
+          </Text>
+          <Text size="xs">Ablauf: {card.ablaufdatum}</Text>
+        </Stack>
+        <Badge color={b.color} variant="light">
+          {b.text}
+        </Badge>
+      </Group>
+
+      <Group gap="xs" wrap="wrap" mt="sm">
+        <Button
+          variant="light"
+          size="xs"
+          loading={addToShoppingListLoading}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToShoppingList(card);
+          }}
+        >
+          Auf Liste
+        </Button>
+        <Button
+          variant="outline"
+          color="red"
+          size="xs"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(card.id);
+          }}
+        >
+          Loeschen
+        </Button>
+      </Group>
+    </Card>
+  );
+}
+
 

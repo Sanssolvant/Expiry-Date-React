@@ -74,7 +74,9 @@ export function GridItem({
       shadow="sm"
       padding={0}
       style={{
-        height: 350,
+        minHeight: 350,
+        display: 'flex',
+        flexDirection: 'column',
         cursor: isDragging ? 'grabbing' : 'grab',
         // "ring" Effekt wie vorher
         outline: isDragging ? `2px solid ${theme.colors[theme.primaryColor][5]}` : 'none',
@@ -119,7 +121,7 @@ export function GridItem({
       {/* Content */}
       <Stack gap={0} px="md" py="sm" style={{ flex: 1 }}>
         <Box style={{ minHeight: 0 }}>
-          <Text fw={600} size="md" lh={1.25} lineClamp={2}>
+          <Text fw={600} size="md" lh={1.25} style={{ wordBreak: 'break-word' }}>
             {name}
           </Text>
 
@@ -152,7 +154,7 @@ export function GridItem({
               <Text size="xs" c="dimmed">
                 Kategorie
               </Text>
-              <Text fw={500} lineClamp={1}>
+              <Text fw={500} style={{ wordBreak: 'break-word' }}>
                 {kategorie}
               </Text>
             </Box>

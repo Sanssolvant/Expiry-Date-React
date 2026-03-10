@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth';
 import prisma from '@/app/lib/prisma';
 import {
+  ALLOWED_INVENTORY_LAYOUT_MODES,
+  ALLOWED_INVENTORY_SORT_MODES,
   ALLOWED_INTERVAL_UNITS,
+  type InventoryLayoutMode,
+  type InventorySortMode,
   type IntervalUnit,
   USER_SETTINGS_DEFAULTS,
 } from '@/app/lib/user-settings';
@@ -81,6 +85,20 @@ export async function POST(req: NextRequest) {
       rawIntervalUnit && ALLOWED_INTERVAL_UNITS.includes(rawIntervalUnit as IntervalUnit)
         ? (rawIntervalUnit as IntervalUnit)
         : undefined;
+    const rawInventoryLayoutMode =
+      typeof body?.inventoryLayoutMode === 'string' ? body.inventoryLayoutMode : undefined;
+    const inventoryLayoutMode: InventoryLayoutMode | undefined =
+      rawInventoryLayoutMode &&
+      ALLOWED_INVENTORY_LAYOUT_MODES.includes(rawInventoryLayoutMode as InventoryLayoutMode)
+        ? (rawInventoryLayoutMode as InventoryLayoutMode)
+        : undefined;
+    const rawInventorySortMode =
+      typeof body?.inventorySortMode === 'string' ? body.inventorySortMode : undefined;
+    const inventorySortMode: InventorySortMode | undefined =
+      rawInventorySortMode &&
+      ALLOWED_INVENTORY_SORT_MODES.includes(rawInventorySortMode as InventorySortMode)
+        ? (rawInventorySortMode as InventorySortMode)
+        : undefined;
 
     const emailReminderTimeZone =
       typeof body?.emailReminderTimeZone === 'string' && body.emailReminderTimeZone.trim()
@@ -127,6 +145,18 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    if (rawInventoryLayoutMode !== undefined && inventoryLayoutMode === undefined) {
+      return NextResponse.json(
+        { error: 'inventoryLayoutMode muss cards, list oder compact sein.' },
+        { status: 400 }
+      );
+    }
+    if (rawInventorySortMode !== undefined && inventorySortMode === undefined) {
+      return NextResponse.json(
+        { error: 'inventorySortMode muss manual, expiry_asc oder expiry_desc sein.' },
+        { status: 400 }
+      );
+    }
 
     const finalIntervalValue = emailReminderIntervalValue ?? USER_SETTINGS_DEFAULTS.emailReminderIntervalValue;
     const finalIntervalUnit = emailReminderIntervalUnit ?? USER_SETTINGS_DEFAULTS.emailReminderIntervalUnit;
@@ -155,6 +185,12 @@ export async function POST(req: NextRequest) {
     if (emailReminderTimeZone !== undefined) {
       updateData.emailReminderTimeZone = emailReminderTimeZone;
     }
+    if (inventoryLayoutMode !== undefined) {
+      updateData.inventoryLayoutMode = inventoryLayoutMode;
+    }
+    if (inventorySortMode !== undefined) {
+      updateData.inventorySortMode = inventorySortMode;
+    }
 
     updateData.emailReminderFrequencyDays = intervalToLegacyDays(finalIntervalValue, finalIntervalUnit);
 
@@ -173,6 +209,8 @@ export async function POST(req: NextRequest) {
       emailReminderFrequencyDays: intervalToLegacyDays(finalIntervalValue, finalIntervalUnit),
       emailReminderHour: Number(finalTime.split(':')[0]),
       emailReminderTimeZone: emailReminderTimeZone ?? USER_SETTINGS_DEFAULTS.emailReminderTimeZone,
+      inventoryLayoutMode: inventoryLayoutMode ?? USER_SETTINGS_DEFAULTS.inventoryLayoutMode,
+      inventorySortMode: inventorySortMode ?? USER_SETTINGS_DEFAULTS.inventorySortMode,
     };
 
     const updated = await prisma.userSettings.upsert({

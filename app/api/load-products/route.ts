@@ -17,9 +17,10 @@ export async function GET() {
   }
 
   try {
+    const orderBy: any = [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
     const produkte = await prisma.produkt.findMany({
       where: { userId: session.user.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy,
     });
 
     return NextResponse.json({ produkte });

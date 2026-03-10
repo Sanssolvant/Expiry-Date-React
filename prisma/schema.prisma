@@ -99,6 +99,7 @@ model Produkt {
   erfasstAm   DateTime
   kategorie   String
   bildUrl     String
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
 
   @@map("produkt")
@@ -109,6 +110,8 @@ model UserSettings {
   userId                   String    @unique
   warnLevelBald            Int       @default(3) // z.B. 3 Tage
   warnLevelExpired         Int       @default(0) // z.B. 0 Tage = abgelaufen
+  inventoryLayoutMode      String    @default("cards") // cards | list | compact
+  inventorySortMode        String    @default("manual") // manual | expiry_asc | expiry_desc
   emailRemindersEnabled    Boolean   @default(false)
   emailReminderFrequencyDays Int     @default(1) // legacy
   emailReminderHour        Int       @default(8) // legacy
