@@ -219,7 +219,7 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
           </Group>
 
           <Group gap="xs">
-            <Badge variant="outline">{recipe.dishType === 'sweet' ? 'Suess' : 'Herzhaft'}</Badge>
+            <Badge variant="outline">{recipe.dishType === 'sweet' ? 'Süss' : 'Herzhaft'}</Badge>
             <Badge variant="outline">Portionen: {recipe.servings}</Badge>
             <Badge variant="outline">Dauer: {recipe.prepMinutes} min</Badge>
             <Badge variant="outline">Zutaten: {recipe.ingredients.length}</Badge>

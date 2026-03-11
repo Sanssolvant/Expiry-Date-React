@@ -1,9 +1,11 @@
 'use client';
 
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { IconAlertTriangle, IconMail, IconSettings } from '@tabler/icons-react';
+import { IconAlertTriangle, IconMail, IconPlus, IconSettings, IconX } from '@tabler/icons-react';
 import {
+  ActionIcon,
   alpha,
+  Badge,
   Box,
   Button,
   Group,
@@ -37,6 +39,16 @@ const intervalUnitData = [
   { value: 'week', label: 'Woche(n)' },
   { value: 'month', label: 'Monat(e)' },
 ];
+
+function uniqueStrings(values: string[], maxLen = 40) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.trim().replace(/\s+/g, ' '))
+        .filter((value) => value.length > 0 && value.length <= maxLen)
+    )
+  ).slice(0, 100);
+}
 
 function isValidTime(value: string) {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
@@ -72,6 +84,12 @@ export function SettingsMenu({
   const [localReminderTimeZone, setLocalReminderTimeZone] = useState(
     USER_SETTINGS_DEFAULTS.emailReminderTimeZone
   );
+  const [localCategories, setLocalCategories] = useState<string[]>(
+    USER_SETTINGS_DEFAULTS.inventoryCategories
+  );
+  const [localUnits, setLocalUnits] = useState<string[]>(USER_SETTINGS_DEFAULTS.inventoryUnits);
+  const [newCategory, setNewCategory] = useState('');
+  const [newUnit, setNewUnit] = useState('');
 
   const isOpened = opened ?? internalOpened;
 
@@ -89,6 +107,10 @@ export function SettingsMenu({
 
     setLocalBald(baldAb);
     setLocalExpired(abgelaufenAb);
+    setLocalCategories(USER_SETTINGS_DEFAULTS.inventoryCategories);
+    setLocalUnits(USER_SETTINGS_DEFAULTS.inventoryUnits);
+    setNewCategory('');
+    setNewUnit('');
     setError('');
     setSuccess(false);
 
@@ -134,6 +156,25 @@ export function SettingsMenu({
         setLocalReminderTimeZone(
           settings.emailReminderTimeZone || USER_SETTINGS_DEFAULTS.emailReminderTimeZone
         );
+
+        if (Array.isArray(settings.inventoryCategories)) {
+          const categories = uniqueStrings(
+            settings.inventoryCategories.filter((x: unknown) => typeof x === 'string')
+          );
+          if (categories.length > 0) {
+            setLocalCategories(categories);
+          }
+        }
+
+        if (Array.isArray(settings.inventoryUnits)) {
+          const units = uniqueStrings(
+            settings.inventoryUnits.filter((x: unknown) => typeof x === 'string'),
+            20
+          );
+          if (units.length > 0) {
+            setLocalUnits(units);
+          }
+        }
       } catch {
         // keep defaults
       }
@@ -154,6 +195,18 @@ export function SettingsMenu({
     const bald = typeof localBald === 'number' ? localBald : 1;
     return Math.max(0, bald - 1);
   }, [localBald]);
+
+  const addCategory = () => {
+    const next = uniqueStrings([...localCategories, newCategory]);
+    setLocalCategories(next);
+    setNewCategory('');
+  };
+
+  const addUnit = () => {
+    const next = uniqueStrings([...localUnits, newUnit], 20);
+    setLocalUnits(next);
+    setNewUnit('');
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -180,6 +233,18 @@ export function SettingsMenu({
       }
     }
 
+    if (localCategories.length === 0) {
+      setError('Mindestens eine Kategorie muss vorhanden sein.');
+      setSaving(false);
+      return;
+    }
+
+    if (localUnits.length === 0) {
+      setError('Mindestens eine Einheit muss vorhanden sein.');
+      setSaving(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/user-settings', {
         method: 'POST',
@@ -193,6 +258,8 @@ export function SettingsMenu({
           emailReminderIntervalValue: Number(localIntervalValue || 1),
           emailReminderIntervalUnit: localIntervalUnit,
           emailReminderTimeZone: localReminderTimeZone,
+          inventoryCategories: localCategories,
+          inventoryUnits: localUnits,
         }),
       });
 
@@ -203,6 +270,16 @@ export function SettingsMenu({
 
       setBaldAb(Number(localBald));
       setAbgelaufenAb(Number(localExpired));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('inventory-options-updated', {
+            detail: {
+              inventoryCategories: localCategories,
+              inventoryUnits: localUnits,
+            },
+          })
+        );
+      }
       setSuccess(true);
       setTimeout(() => setIsOpened(false), 900);
     } catch (err: any) {
@@ -357,6 +434,113 @@ export function SettingsMenu({
             <Text size="xs" c="dimmed" mt={6}>
               Zeitzone: {localReminderTimeZone}
             </Text>
+          </Box>
+
+          <Box
+            style={{
+              borderRadius: 16,
+              border: `1px solid ${tileBorder}`,
+              background: tileBg,
+              padding: 12,
+            }}
+          >
+            <Text fw={700} size="sm" mb="xs">
+              Kategorien und Einheiten
+            </Text>
+
+            <Text size="xs" c="dimmed" mb={8}>
+              Hier kannst du eigene Werte pflegen. Diese werden in Formularen und Filtern verwendet.
+            </Text>
+
+            <Stack gap="xs">
+              <Text fw={600} size="xs">
+                Kategorien
+              </Text>
+              <Group align="end" gap="xs" wrap="nowrap">
+                <TextInput
+                  style={{ flex: 1 }}
+                  placeholder="Kategorie hinzufügen"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.currentTarget.value)}
+                />
+                <Button
+                  variant="light"
+                  leftSection={<IconPlus size={14} />}
+                  onClick={addCategory}
+                  disabled={!newCategory.trim()}
+                >
+                  Hinzufügen
+                </Button>
+              </Group>
+              <Group gap="xs" wrap="wrap">
+                {localCategories.map((category) => (
+                  <Badge
+                    key={`cat-${category}`}
+                    variant="light"
+                    rightSection={
+                      <ActionIcon
+                        size="xs"
+                        variant="subtle"
+                        color="red"
+                        onClick={() =>
+                          setLocalCategories((prev) => prev.filter((x) => x !== category))
+                        }
+                        disabled={localCategories.length <= 1}
+                        aria-label={`Kategorie ${category} entfernen`}
+                      >
+                        <IconX size={12} />
+                      </ActionIcon>
+                    }
+                  >
+                    {category}
+                  </Badge>
+                ))}
+              </Group>
+            </Stack>
+
+            <Stack gap="xs" mt="md">
+              <Text fw={600} size="xs">
+                Einheiten
+              </Text>
+              <Group align="end" gap="xs" wrap="nowrap">
+                <TextInput
+                  style={{ flex: 1 }}
+                  placeholder="Einheit hinzufügen"
+                  value={newUnit}
+                  onChange={(e) => setNewUnit(e.currentTarget.value)}
+                />
+                <Button
+                  variant="light"
+                  leftSection={<IconPlus size={14} />}
+                  onClick={addUnit}
+                  disabled={!newUnit.trim()}
+                >
+                  Hinzufügen
+                </Button>
+              </Group>
+              <Group gap="xs" wrap="wrap">
+                {localUnits.map((unit) => (
+                  <Badge
+                    key={`unit-${unit}`}
+                    variant="light"
+                    rightSection={
+                      <ActionIcon
+                        size="xs"
+                        variant="subtle"
+                        color="red"
+                        onClick={() => setLocalUnits((prev) => prev.filter((x) => x !== unit))}
+                        disabled={localUnits.length <= 1}
+                        aria-label={`Einheit ${unit} entfernen`}
+                      >
+                        <IconX size={12} />
+                      </ActionIcon>
+                    }
+                  >
+                    {unit}
+                  </Badge>
+                ))}
+              </Group>
+            </Stack>
           </Box>
 
           {error ? (

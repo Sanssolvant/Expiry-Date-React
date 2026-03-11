@@ -1,23 +1,11 @@
 import OpenAI from 'openai';
-import { einheiten, kategorien } from '@/app/types';
+import { headers } from 'next/headers';
+import { auth } from '@/app/lib/auth';
+import { getInventoryOptionsForUser } from '@/app/lib/inventory-options';
 
 export const runtime = 'nodejs';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-function toAllowedList(arr: any[]): string[] {
-  return (arr ?? [])
-    .map((x) => {
-      if (typeof x === 'string') {
-        return x;
-      }
-      if (x && typeof x === 'object') {
-        return x.value ?? x.label ?? '';
-      }
-      return '';
-    })
-    .filter(Boolean);
-}
 
 function todayZurichDDMMYYYY(): string {
   return new Intl.DateTimeFormat('de-CH', {
@@ -41,9 +29,12 @@ export async function POST(req: Request) {
       return Response.json({ error: 'No text provided' }, { status: 400 });
     }
 
-    const allowedUnits = toAllowedList(einheiten as any);
-    const allowedCats = toAllowedList(kategorien as any);
+    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
+    const { units: allowedUnits, categories: allowedCats, defaultUnit, defaultCategory } =
+      await getInventoryOptionsForUser(session?.user?.id);
     const todayStr = todayZurichDDMMYYYY();
+    const defaultUnitJson = JSON.stringify(defaultUnit);
+    const defaultCategoryJson = JSON.stringify(defaultCategory);
 
     const resp = await openai.responses.create({
       model: 'gpt-4o-mini',
@@ -64,11 +55,11 @@ export async function POST(req: Request) {
             `EINHEIT exakt aus:\n${JSON.stringify(allowedUnits)}\n\n` +
             `KATEGORIE exakt aus:\n${JSON.stringify(allowedCats)}\n\n` +
             `JSON-Format:\n` +
-            `{"name":"", "menge": 1, "einheit":"Stk", "kategorie":"", "ablaufdatum":"DD.MM.YYYY"|null}\n\n` +
+            `{"name":"", "menge": 1, "einheit":${defaultUnitJson}, "kategorie":${defaultCategoryJson}, "ablaufdatum":"DD.MM.YYYY"|null}\n\n` +
             `Defaults:\n` +
             `- menge=1\n` +
-            `- einheit="Stk" wenn unklar\n` +
-            `- kategorie="" wenn unklar\n`,
+            `- einheit=${defaultUnitJson} wenn unklar\n` +
+            `- kategorie=${defaultCategoryJson} wenn unklar\n`,
         },
       ],
     });
@@ -79,14 +70,20 @@ export async function POST(req: Request) {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      parsed = { name: '', menge: 1, einheit: 'Stk', kategorie: '', ablaufdatum: null };
+      parsed = {
+        name: '',
+        menge: 1,
+        einheit: defaultUnit,
+        kategorie: defaultCategory,
+        ablaufdatum: null,
+      };
     }
 
     if (!allowedUnits.includes(parsed.einheit)) {
-      parsed.einheit = 'Stk';
+      parsed.einheit = defaultUnit;
     }
     if (!allowedCats.includes(parsed.kategorie)) {
-      parsed.kategorie = '';
+      parsed.kategorie = defaultCategory;
     }
     if (parsed.ablaufdatum != null && !isValidGermanDate(parsed.ablaufdatum)) {
       parsed.ablaufdatum = null;

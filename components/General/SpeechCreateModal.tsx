@@ -300,7 +300,7 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
           minRows={4}
           value={text}
           onChange={(e) => setText(e.currentTarget.value)}
-          placeholder='z.B. "2 Milch 1 Liter Kategorie Milchprodukte Ablauf am 14.12.2025"'
+          placeholder='z.B. "5 Stück Mango, Kategorie Früchte, abgelaufen in 3 Tagen"'
           disabled={isTranscribing || isRecording}
           styles={{
             input: { borderRadius: 16 },

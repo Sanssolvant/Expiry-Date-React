@@ -6,6 +6,8 @@ import {
   ALLOWED_INVENTORY_LAYOUT_MODES,
   ALLOWED_INVENTORY_SORT_MODES,
   ALLOWED_INTERVAL_UNITS,
+  DEFAULT_INVENTORY_CATEGORIES,
+  DEFAULT_INVENTORY_UNITS,
   type InventoryLayoutMode,
   type InventorySortMode,
   type IntervalUnit,
@@ -39,6 +41,51 @@ function intervalToLegacyDays(value: number, unit: IntervalUnit) {
   return value * 30;
 }
 
+function normalizeStringList(values: unknown, maxLen = 40): string[] | undefined {
+  if (values === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(values)) {
+    return undefined;
+  }
+
+  const unique = new Set<string>();
+
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+    const cleaned = value.trim().replace(/\s+/g, ' ');
+    if (!cleaned) {
+      continue;
+    }
+    if (cleaned.length > maxLen) {
+      continue;
+    }
+    unique.add(cleaned);
+  }
+
+  return Array.from(unique).slice(0, 100);
+}
+
+function parseStoredList(raw: unknown, fallback: string[]) {
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return [...fallback];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeStringList(parsed);
+    if (!normalized || normalized.length === 0) {
+      return [...fallback];
+    }
+    return normalized;
+  } catch {
+    return [...fallback];
+  }
+}
+
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -47,15 +94,26 @@ export async function GET() {
       return NextResponse.json({ error: 'Nicht eingeloggt' }, { status: 401 });
     }
 
-    const settings = await prisma.userSettings.findUnique({
+    const settingsRaw = await prisma.userSettings.findUnique({
       where: { userId: session.user.id },
     });
 
-    if (!settings) {
+    if (!settingsRaw) {
       return NextResponse.json(USER_SETTINGS_DEFAULTS);
     }
 
-    return NextResponse.json(settings);
+    const settings = settingsRaw as any;
+    const inventoryCategories = parseStoredList(
+      settings.inventoryCategories,
+      USER_SETTINGS_DEFAULTS.inventoryCategories
+    );
+    const inventoryUnits = parseStoredList(settings.inventoryUnits, USER_SETTINGS_DEFAULTS.inventoryUnits);
+
+    return NextResponse.json({
+      ...settings,
+      inventoryCategories,
+      inventoryUnits,
+    });
   } catch (error: any) {
     console.error('Fehler beim Abholen der Settings:', error?.message || error);
     return NextResponse.json({ error: 'Serverfehler beim Abholen der Settings' }, { status: 500 });
@@ -99,6 +157,10 @@ export async function POST(req: NextRequest) {
       ALLOWED_INVENTORY_SORT_MODES.includes(rawInventorySortMode as InventorySortMode)
         ? (rawInventorySortMode as InventorySortMode)
         : undefined;
+    const rawInventoryCategories = body?.inventoryCategories;
+    const inventoryCategories = normalizeStringList(rawInventoryCategories);
+    const rawInventoryUnits = body?.inventoryUnits;
+    const inventoryUnits = normalizeStringList(rawInventoryUnits, 20);
 
     const emailReminderTimeZone =
       typeof body?.emailReminderTimeZone === 'string' && body.emailReminderTimeZone.trim()
@@ -157,6 +219,30 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    if (rawInventoryCategories !== undefined && inventoryCategories === undefined) {
+      return NextResponse.json(
+        { error: 'inventoryCategories muss eine Liste aus Strings sein.' },
+        { status: 400 }
+      );
+    }
+    if (rawInventoryUnits !== undefined && inventoryUnits === undefined) {
+      return NextResponse.json(
+        { error: 'inventoryUnits muss eine Liste aus Strings sein.' },
+        { status: 400 }
+      );
+    }
+    if (inventoryCategories !== undefined && inventoryCategories.length === 0) {
+      return NextResponse.json(
+        { error: 'Mindestens eine Kategorie muss vorhanden sein.' },
+        { status: 400 }
+      );
+    }
+    if (inventoryUnits !== undefined && inventoryUnits.length === 0) {
+      return NextResponse.json(
+        { error: 'Mindestens eine Einheit muss vorhanden sein.' },
+        { status: 400 }
+      );
+    }
 
     const finalIntervalValue = emailReminderIntervalValue ?? USER_SETTINGS_DEFAULTS.emailReminderIntervalValue;
     const finalIntervalUnit = emailReminderIntervalUnit ?? USER_SETTINGS_DEFAULTS.emailReminderIntervalUnit;
@@ -191,6 +277,12 @@ export async function POST(req: NextRequest) {
     if (inventorySortMode !== undefined) {
       updateData.inventorySortMode = inventorySortMode;
     }
+    if (inventoryCategories !== undefined) {
+      updateData.inventoryCategories = JSON.stringify(inventoryCategories);
+    }
+    if (inventoryUnits !== undefined) {
+      updateData.inventoryUnits = JSON.stringify(inventoryUnits);
+    }
 
     updateData.emailReminderFrequencyDays = intervalToLegacyDays(finalIntervalValue, finalIntervalUnit);
 
@@ -211,6 +303,10 @@ export async function POST(req: NextRequest) {
       emailReminderTimeZone: emailReminderTimeZone ?? USER_SETTINGS_DEFAULTS.emailReminderTimeZone,
       inventoryLayoutMode: inventoryLayoutMode ?? USER_SETTINGS_DEFAULTS.inventoryLayoutMode,
       inventorySortMode: inventorySortMode ?? USER_SETTINGS_DEFAULTS.inventorySortMode,
+      inventoryCategories: JSON.stringify(
+        inventoryCategories ?? [...DEFAULT_INVENTORY_CATEGORIES]
+      ),
+      inventoryUnits: JSON.stringify(inventoryUnits ?? [...DEFAULT_INVENTORY_UNITS]),
     };
 
     const updated = await prisma.userSettings.upsert({

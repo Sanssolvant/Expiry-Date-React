@@ -1,26 +1,12 @@
 import OpenAI from 'openai';
-import { einheiten, kategorien } from '@/app/types';
+import { headers } from 'next/headers';
+import { auth } from '@/app/lib/auth';
+import { getInventoryOptionsForUser } from '@/app/lib/inventory-options';
 
 export const runtime = 'nodejs';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-/** Mantine Select data kann string[] oder {value,label}[] sein */
-function toAllowedList(arr: any[]): string[] {
-  return (arr ?? [])
-    .map((x) => {
-      if (typeof x === 'string') {
-        return x;
-      }
-      if (x && typeof x === 'object') {
-        return x.value ?? x.label ?? '';
-      }
-      return '';
-    })
-    .filter(Boolean);
-}
-
-/** Heutiges Datum in Europe/Zurich als "DD.MM.YYYY" */
 function todayZurichDDMMYYYY(): string {
   return new Intl.DateTimeFormat('de-CH', {
     timeZone: 'Europe/Zurich',
@@ -43,7 +29,6 @@ export async function POST(req: Request) {
       return Response.json({ error: 'No audio file uploaded' }, { status: 400 });
     }
 
-    // 1) Whisper -> Text
     const transcription = await openai.audio.transcriptions.create({
       model: 'whisper-1',
       file,
@@ -53,19 +38,20 @@ export async function POST(req: Request) {
 
     const text = (transcription as any).text?.trim?.() ?? '';
 
-    // 2) erlaubte Werte aus euren Listen
-    const allowedUnits = toAllowedList(einheiten as any);
-    const allowedCats = toAllowedList(kategorien as any);
+    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
+    const { units: allowedUnits, categories: allowedCats, defaultUnit, defaultCategory } =
+      await getInventoryOptionsForUser(session?.user?.id);
     const todayStr = todayZurichDDMMYYYY();
+    const defaultUnitJson = JSON.stringify(defaultUnit);
+    const defaultCategoryJson = JSON.stringify(defaultCategory);
 
-    // 3) Text -> JSON (inkl. relativer Datumsangaben)
     const resp = await openai.responses.create({
       model: 'gpt-4o-mini',
       input: [
         {
           role: 'system',
           content:
-            'Du extrahierst strukturierte Daten aus deutschem Text. Antworte NUR als reines JSON ohne Markdown oder Zusatztext.',
+            'Du extrahierst strukturierte Daten aus deutschem Text. Antworte nur als reines JSON ohne Markdown oder Zusatztext.',
         },
         {
           role: 'user',
@@ -73,21 +59,20 @@ export async function POST(req: Request) {
             `Text: "${text}"\n\n` +
             `HEUTIGES DATUM (Europe/Zurich): ${todayStr}\n\n` +
             `WICHTIG ZUM DATUM:\n` +
-            `- Wenn im Text ein RELATIVES Ablaufdatum vorkommt (z.B. "in zwei Wochen", "morgen", "übermorgen", "in 3 Tagen", "nächsten Freitag"),\n` +
-            `  rechne es IMMER in ein KONKRETES Datum um.\n` +
-            `- Gib ablaufdatum IMMER als festes Datum im Format "DD.MM.YYYY" zurück.\n` +
-            `- Wenn kein Ablaufdatum erwähnt ist: null.\n\n` +
-            `EINHEIT MUSS EXAKT aus dieser Liste sein, sonst "Stk":\n` +
+            `- Wenn im Text ein relatives Ablaufdatum vorkommt (z.B. "in zwei Wochen", "morgen", "uebermorgen", "in 3 Tagen", "naechsten Freitag"), rechne es immer in ein konkretes Datum um.\n` +
+            `- Gib ablaufdatum immer als festes Datum im Format "DD.MM.YYYY" zurueck.\n` +
+            `- Wenn kein Ablaufdatum erwaehnt ist: null.\n\n` +
+            `EINHEIT muss exakt aus dieser Liste sein, sonst ${defaultUnitJson}:\n` +
             `${JSON.stringify(allowedUnits)}\n\n` +
-            `KATEGORIE MUSS EXAKT aus dieser Liste sein, sonst "":\n` +
+            `KATEGORIE muss exakt aus dieser Liste sein, sonst ${defaultCategoryJson}:\n` +
             `${JSON.stringify(allowedCats)}\n\n` +
-            `Gib NUR dieses JSON-Format zurück:\n` +
-            `{"name":"", "menge": 1, "einheit":"Stk", "kategorie":"", "ablaufdatum":"DD.MM.YYYY"|null}\n\n` +
+            `Gib nur dieses JSON-Format zurueck:\n` +
+            `{"name":"", "menge": 1, "einheit":${defaultUnitJson}, "kategorie":${defaultCategoryJson}, "ablaufdatum":"DD.MM.YYYY"|null}\n\n` +
             `Regeln:\n` +
             `- name: Produktname kurz\n` +
             `- menge: Zahl, Default 1\n` +
-            `- einheit: exakt aus Liste, sonst "Stk"\n` +
-            `- kategorie: exakt aus Liste, sonst ""\n`,
+            `- einheit: exakt aus Liste, sonst ${defaultUnitJson}\n` +
+            `- kategorie: exakt aus Liste, sonst ${defaultCategoryJson}\n`,
         },
       ],
     });
@@ -98,15 +83,20 @@ export async function POST(req: Request) {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      parsed = { name: '', menge: 1, einheit: 'Stk', kategorie: '', ablaufdatum: null };
+      parsed = {
+        name: '',
+        menge: 1,
+        einheit: defaultUnit,
+        kategorie: defaultCategory,
+        ablaufdatum: null,
+      };
     }
 
-    // 4) Safety Korrekturen
     if (!allowedUnits.includes(parsed.einheit)) {
-      parsed.einheit = 'Stk';
+      parsed.einheit = defaultUnit;
     }
     if (!allowedCats.includes(parsed.kategorie)) {
-      parsed.kategorie = '';
+      parsed.kategorie = defaultCategory;
     }
     if (parsed.ablaufdatum != null && !isValidGermanDate(parsed.ablaufdatum)) {
       parsed.ablaufdatum = null;
@@ -116,7 +106,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     if (err?.status === 429) {
       return Response.json(
-        { error: 'OpenAI Kontingent/Quota überschritten. Bitte Billing/Usage prüfen.' },
+        { error: 'OpenAI Kontingent/Quota ueberschritten. Bitte Billing/Usage pruefen.' },
         { status: 429 }
       );
     }

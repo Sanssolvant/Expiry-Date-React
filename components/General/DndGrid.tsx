@@ -18,11 +18,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
+  IconCamera,
   IconChefHat,
   IconCheck,
   IconChartBar,
   IconDeviceFloppy,
   IconHandMove,
+  IconMicrophone,
   IconPlus,
   IconSearch,
   IconSortAscending,
@@ -53,6 +55,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
+import { USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { parseAblauf, WarnLevel, warnPriority, type Filters } from '@/app/types';
 
@@ -84,6 +87,10 @@ type DndGridProps = {
 
 type LayoutMode = 'cards' | 'list' | 'compact';
 
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.map((x) => x.trim()).filter(Boolean)));
+}
+
 export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
@@ -102,6 +109,10 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('cards');
   const [uiSettingsLoaded, setUiSettingsLoaded] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(
+    USER_SETTINGS_DEFAULTS.inventoryCategories
+  );
+  const [unitOptions, setUnitOptions] = useState<string[]>(USER_SETTINGS_DEFAULTS.inventoryUnits);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -125,6 +136,15 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       warnLevel: calculateWarnLevel(card.ablaufdatum, warnBaldAb, warnAbgelaufenAb),
     }));
   }, [rawCards, warnBaldAb, warnAbgelaufenAb]);
+
+  const mergedCategoryOptions = useMemo(
+    () => uniqueStrings([...categoryOptions, ...cards.map((card) => card.kategorie)]),
+    [categoryOptions, cards]
+  );
+  const mergedUnitOptions = useMemo(
+    () => uniqueStrings([...unitOptions, ...cards.map((card) => card.einheit)]),
+    [unitOptions, cards]
+  );
 
   useEffect(() => setMounted(true), []);
 
@@ -151,6 +171,24 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         const nextSort = settings?.inventorySortMode;
         if (nextSort === 'manual' || nextSort === 'expiry_asc' || nextSort === 'expiry_desc') {
           setFilters((prev) => ({ ...prev, sort: nextSort }));
+        }
+
+        if (Array.isArray(settings?.inventoryCategories)) {
+          const nextCategories = uniqueStrings(
+            settings.inventoryCategories.filter((x: unknown) => typeof x === 'string')
+          );
+          if (nextCategories.length > 0) {
+            setCategoryOptions(nextCategories);
+          }
+        }
+
+        if (Array.isArray(settings?.inventoryUnits)) {
+          const nextUnits = uniqueStrings(
+            settings.inventoryUnits.filter((x: unknown) => typeof x === 'string')
+          );
+          if (nextUnits.length > 0) {
+            setUnitOptions(nextUnits);
+          }
         }
       } catch {
         // fallback: local defaults
@@ -185,6 +223,37 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       // non-blocking persistence
     });
   }, [uiSettingsLoaded, layoutMode, filters.sort]);
+
+  useEffect(() => {
+    const onInventoryOptionsUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        inventoryCategories?: string[];
+        inventoryUnits?: string[];
+      }>;
+
+      if (Array.isArray(customEvent.detail?.inventoryCategories)) {
+        const nextCategories = uniqueStrings(customEvent.detail.inventoryCategories);
+        if (nextCategories.length > 0) {
+          setCategoryOptions(nextCategories);
+        }
+      }
+
+      if (Array.isArray(customEvent.detail?.inventoryUnits)) {
+        const nextUnits = uniqueStrings(customEvent.detail.inventoryUnits);
+        if (nextUnits.length > 0) {
+          setUnitOptions(nextUnits);
+        }
+      }
+    };
+
+    window.addEventListener('inventory-options-updated', onInventoryOptionsUpdated as EventListener);
+    return () => {
+      window.removeEventListener(
+        'inventory-options-updated',
+        onInventoryOptionsUpdated as EventListener
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const loadCards = async () => {
@@ -523,6 +592,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           setEditingCard(null);
         }}
         onCreate={handleCreateCard}
+        unitOptions={mergedUnitOptions}
+        categoryOptions={mergedCategoryOptions}
         initialData={editingCard}
       />
 
@@ -552,11 +623,23 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           }}
         >
           <Button variant="outline" onClick={() => setSpeechOpen(true)}>
-            🎙️
+            {isMobile ? (
+              <IconMicrophone size={18} />
+            ) : (
+              <>
+                <IconMicrophone size={18} style={{ marginRight: 10 }} /> Per Sprache
+              </>
+            )}
           </Button>
 
           <Button variant="outline" onClick={() => setPhotoOpen(true)}>
-            📷
+            {isMobile ? (
+              <IconCamera size={18} />
+            ) : (
+              <>
+                <IconCamera size={18} style={{ marginRight: 10 }} /> Per Bild
+              </>
+            )}
           </Button>
 
           <Button onClick={() => setModalOpen(true)}>
@@ -599,7 +682,13 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             )}
           </Button>
 
-          <CardFilterMenu iconOnly={isMobile} filters={filters} setFilters={setFilters} />
+          <CardFilterMenu
+            iconOnly={isMobile}
+            filters={filters}
+            setFilters={setFilters}
+            categories={mergedCategoryOptions}
+            units={mergedUnitOptions}
+          />
 
           <SegmentedControl
             value={layoutMode}
@@ -964,7 +1053,7 @@ function InventoryListItem({
                 onDelete(card.id);
               }}
             >
-              Loeschen
+              Löschen
             </Button>
           </Group>
         </Stack>
@@ -1022,7 +1111,7 @@ function InventoryCompactItem({
             onDelete(card.id);
           }}
         >
-          Loeschen
+          Löschen
         </Button>
       </Group>
     </Card>

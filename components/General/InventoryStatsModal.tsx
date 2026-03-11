@@ -112,12 +112,12 @@ export function InventoryStatsModal({ opened, onClose, cards }: Props) {
       year: '2-digit',
     });
 
-    const monthBuckets = new Map<string, { month: string; ablaeufe: number }>();
+    const monthBuckets = new Map<string, { month: string; abläufe: number }>();
     for (let offset = -3; offset <= 3; offset += 1) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
       monthBuckets.set(keyForMonth(monthDate), {
         month: monthFormatter.format(monthDate),
-        ablaeufe: 0,
+        abläufe: 0,
       });
     }
 
@@ -130,7 +130,7 @@ export function InventoryStatsModal({ opened, onClose, cards }: Props) {
       const key = keyForMonth(expiry);
       const bucket = monthBuckets.get(key);
       if (bucket) {
-        bucket.ablaeufe += 1;
+        bucket.abläufe += 1;
       }
     }
 
@@ -241,13 +241,13 @@ export function InventoryStatsModal({ opened, onClose, cards }: Props) {
 
         <Paper withBorder p="md" radius="md">
           <Text fw={600} mb="sm">
-            Ablaeufe pro Monat (3 Monate zurueck bis 3 Monate voraus)
+            Abläufe pro Monat (3 Monate zurück bis 3 Monate voraus)
           </Text>
           <LineChart
             h={260}
             data={stats.expiryTrendData}
             dataKey="month"
-            series={[{ name: 'ablaeufe', color: expiryLineColor, label: 'Ablaeufe' }]}
+            series={[{ name: 'abläufe', color: expiryLineColor, label: 'Abläufe' }]}
             withDots
             withLegend={false}
             withXAxis

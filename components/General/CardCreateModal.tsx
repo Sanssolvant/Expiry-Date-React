@@ -25,7 +25,6 @@ import { useForm } from '@mantine/form';
 
 import { IconCalendar, IconCategory, IconLabel, IconPhoto, IconPlus } from '@tabler/icons-react';
 import { formatDateToDisplay, parseDateFromString } from '@/app/lib/dateUtils';
-import { einheiten, kategorien } from '@/app/types';
 
 type CardData = {
   id: string;
@@ -42,8 +41,14 @@ type Props = {
   opened: boolean;
   onClose: () => void;
   onCreate: (card: CardData) => void;
+  unitOptions: string[];
+  categoryOptions: string[];
   initialData?: CardData | null;
 };
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.map((x) => x.trim()).filter(Boolean)));
+}
 
 function Section({
   title,
@@ -87,7 +92,14 @@ function Section({
   );
 }
 
-export function CardCreateModal({ opened, onClose, onCreate, initialData }: Props) {
+export function CardCreateModal({
+  opened,
+  onClose,
+  onCreate,
+  unitOptions,
+  categoryOptions,
+  initialData,
+}: Props) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
@@ -96,6 +108,14 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
   const [saving, setSaving] = useState(false);
 
   const isEdit = Boolean(initialData);
+  const mergedUnitOptions = useMemo(
+    () => uniqueStrings([...unitOptions, initialData?.einheit ?? '']),
+    [unitOptions, initialData?.einheit]
+  );
+  const mergedCategoryOptions = useMemo(
+    () => uniqueStrings([...categoryOptions, initialData?.kategorie ?? '']),
+    [categoryOptions, initialData?.kategorie]
+  );
 
   const form = useForm({
     initialValues: {
@@ -129,9 +149,13 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
       setFile(null);
     } else {
       form.reset();
+      form.setValues({
+        einheit: mergedUnitOptions[0] || 'Stk',
+        kategorie: mergedCategoryOptions[0] || '',
+      });
       setFile(null);
     }
-  }, [opened, initialData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [opened, initialData, mergedUnitOptions, mergedCategoryOptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImageUpload = async (file: File): Promise<string | null> => {
     const formData = new FormData();
@@ -142,19 +166,6 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
 
     const json = await res.json();
     return json.url || null;
-  };
-
-  const waitForImage = async (url: string, maxRetries = 5, delay = 300): Promise<boolean> => {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (res.ok && res.headers.get('content-type')?.startsWith('image/')) return true;
-      } catch {
-        /* empty */
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-    return false;
   };
 
   const title = isEdit ? 'Karte bearbeiten' : 'Neue Karte erstellen';
@@ -182,7 +193,6 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
       if (file) {
         const uploaded = await handleImageUpload(file);
         if (uploaded) {
-          await waitForImage(uploaded);
           imageUrl = uploaded;
         }
       }
@@ -265,7 +275,7 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
                 <Select
                   label="Einheit"
                   allowDeselect={false}
-                  data={einheiten}
+                  data={mergedUnitOptions}
                   {...form.getInputProps('einheit')}
                 />
               </SimpleGrid>
@@ -298,7 +308,7 @@ export function CardCreateModal({ opened, onClose, onCreate, initialData }: Prop
               allowDeselect={false}
               leftSection={<IconCategory size={18} stroke={1.5} />}
               label="Kategorie"
-              data={kategorien}
+              data={mergedCategoryOptions}
               placeholder="Kategorie wählen"
               {...form.getInputProps('kategorie')}
               required

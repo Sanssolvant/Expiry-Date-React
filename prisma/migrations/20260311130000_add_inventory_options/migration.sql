@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE `userSettings`
+    ADD COLUMN `inventoryCategories` TEXT NULL,
+    ADD COLUMN `inventoryUnits` TEXT NULL;

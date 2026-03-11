@@ -24,13 +24,15 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { einheiten, kategorien, WarnLevel } from '@/app/types';
+import { WarnLevel } from '@/app/types';
 import type { Filters } from '@/app/types';
 import type { Dispatch, SetStateAction } from 'react';
 
 type Props = {
   filters: Filters;
   setFilters: Dispatch<SetStateAction<Filters>>;
+  categories: string[];
+  units: string[];
   iconOnly?: boolean;
 };
 
@@ -46,7 +48,7 @@ const DEFAULT_FILTERS: Filters = {
   sort: 'expiry_asc',
 };
 
-export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
+export function CardFilterMenu({ filters, setFilters, categories, units, iconOnly }: Props) {
   const [opened, setOpened] = useState(false);
 
   // 🔥 Lokaler State (damit Reset wirklich die Input-Felder leert)
@@ -136,7 +138,7 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
               <Select
                 leftSection={<IconCategory size={18} stroke={1.5} />}
                 label="Kategorie"
-                data={kategorien}
+                data={categories}
                 clearable
                 value={local.kategorie}
                 onChange={(value) => setLocal((f) => ({ ...f, kategorie: value || '' }))}
@@ -144,7 +146,7 @@ export function CardFilterMenu({ filters, setFilters, iconOnly }: Props) {
 
               <Select
                 label="Einheit"
-                data={einheiten}
+                data={units}
                 clearable
                 value={local.einheit}
                 onChange={(value) => setLocal((f) => ({ ...f, einheit: value || '' }))}
