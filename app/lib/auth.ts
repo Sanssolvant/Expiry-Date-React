@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient } from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { nextCookies } from 'better-auth/next-js';
@@ -20,8 +20,14 @@ export const auth = betterAuth({
       await sendEmail({
         to: user.email,
         subject: 'Änderung Ihres Passworts',
-        text: `Hallo ${user.name || ''},\n\nKlicke auf diesen Link, um dein Passwort zu ändern.:\n${verificationUrl}\n\nDanke!`,
+        text: `Hallo ${user.name || ''},\n\nKlicke auf diesen Link, um dein Passwort zu ändern:\n${verificationUrl}\n\nDanke!`,
       });
+    },
+  },
+  user: {
+    changeEmail: {
+      enabled: true,
+      updateEmailWithoutVerification: false,
     },
   },
   plugins: [openAPI(), nextCookies(), username()],
@@ -39,10 +45,12 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
-    cookieCache: { enabled: true }, // nur bei Bedarf
+    cookieCache: { enabled: true },
   },
-  trustedOrigins: ["http://localhost:3000",
-  "http://192.168.1.184:3000",
-  "https://trackshelf.dev",
-  "https://melinda-unappreciated-rory.ngrok-free.dev",],
+  trustedOrigins: [
+    'http://localhost:3000',
+    'http://192.168.1.184:3000',
+    'https://trackshelf.dev',
+    'https://melinda-unappreciated-rory.ngrok-free.dev',
+  ],
 });

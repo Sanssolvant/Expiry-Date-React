@@ -221,7 +221,7 @@ export function SettingsMenu({
 
     if (localReminderEnabled) {
       if (!isValidTime(localReminderTime)) {
-        setError('Bitte eine gueltige Uhrzeit im Format HH:mm eingeben.');
+        setError('Bitte eine gültige Uhrzeit im Format HH:mm eingeben.');
         setSaving(false);
         return;
       }
@@ -312,6 +312,16 @@ export function SettingsMenu({
         centered
         size="md"
         radius="xl"
+        styles={{
+          content: {
+            borderTopRightRadius: 0,
+            borderBottomRightRadius: 0,
+          },
+          header: {
+            borderTopRightRadius: 0,
+            borderBottomRightRadius: 0,
+          },
+        }}
         overlayProps={{ blur: 6, backgroundOpacity: 0.45 }}
         title={
           <Group gap="sm" align="center">
