@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { IconKey, IconLogout2, IconSettings, IconX } from '@tabler/icons-react';
+import { IconKey, IconLogout2, IconSettings, IconShieldLock, IconX } from '@tabler/icons-react';
+import Link from 'next/link';
 import {
   Avatar,
   Button,
@@ -18,6 +19,7 @@ import {
 import { notifications } from '@mantine/notifications';
 
 import { authClient } from '@/app/lib/auth-client';
+import { useAdminAccess } from '@/app/lib/use-admin-access';
 
 import { SettingsMenu } from './SettingsMenu';
 
@@ -51,6 +53,7 @@ function getInitials(value: string) {
 
 export function UserProfileMenu({ baldAb, abgelaufenAb, setBaldAb, setAbgelaufenAb }: Props) {
   const { data } = authClient.useSession();
+  const { canAccess: canAccessAdmin } = useAdminAccess();
   const [menuOpened, setMenuOpened] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [accountOpened, setAccountOpened] = useState(false);
@@ -329,6 +332,17 @@ export function UserProfileMenu({ baldAb, abgelaufenAb, setBaldAb, setAbgelaufen
           >
             Einstellungen
           </Menu.Item>
+
+          {canAccessAdmin ? (
+            <Menu.Item
+              component={Link}
+              href="/admin"
+              leftSection={<IconShieldLock size={16} />}
+              onClick={() => setMenuOpened(false)}
+            >
+              Adminbereich
+            </Menu.Item>
+          ) : null}
 
           <Menu.Item color="red" leftSection={<IconLogout2 size={16} />} onClick={handleSignOut}>
             Abmelden

@@ -81,8 +81,41 @@ export function LoginForm() {
       }
     };
 
-    const onSuccess = () => {
-      router.push('/dashboard');
+    const resolveRedirectTarget = async () => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const adminRes = await fetch('/api/admin/access', {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          const payload = await adminRes.json().catch(() => ({}));
+
+          if (payload?.canAccess) {
+            return '/admin';
+          }
+          if (payload?.authenticated) {
+            return '/dashboard';
+          }
+        } catch {
+          // Retry below
+        }
+
+        await new Promise((resolve) => {
+          setTimeout(resolve, 180);
+        });
+      }
+
+      return '/dashboard';
+    };
+
+    const onSuccess = async () => {
+      try {
+        const target = await resolveRedirectTarget();
+        router.push(target);
+      } catch {
+        router.push('/dashboard');
+      }
     };
 
     setLoading(true);
