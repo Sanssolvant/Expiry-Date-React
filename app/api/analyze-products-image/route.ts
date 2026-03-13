@@ -24,9 +24,9 @@ Du analysierst ein Foto einer Produktsammlung (Vorrat oder Kuehlschrank).
 
 Ziel:
 - Erkenne sichtbare Produkte (keine Marken erfinden).
-- Zaehle Einzelexemplare.
+- Zähle Einzelexemplare.
 - Ordne jedes Produkt genau einer Kategorie aus der Liste zu.
-- Schaetze ein Ablaufdatum nur wenn sinnvoll.
+- Schätze ein Ablaufdatum nur wenn sinnvoll.
 - Gib confidence (0-1) an.
 
 ERLAUBTE KATEGORIEN (nur diese):
@@ -39,9 +39,9 @@ Wenn unklar:
 - category = ${defaultCategoryJson}
 - unit = ${defaultUnitJson}
 
-Zaehlregeln:
-- Bei einzelnen Exemplaren (z.B. Tomaten am Strauch): jedes Exemplar einzeln zaehlen.
-- Gib fuer jedes sichtbare Exemplar eine Instanz in instances aus.
+Zählregeln:
+- Bei einzelnen Exemplaren (z.B. Tomaten am Strauch): jedes Exemplar einzeln zählen.
+- Gib für jedes sichtbare Exemplar eine Instanz in instances aus.
 - Koordinaten in instances sind normalisiert auf 0..1000: x,y,w,h.
 - c ist die Instanz-Confidence 0..1.
 - quantity soll der Anzahl sichtbarer Exemplare entsprechen.
@@ -49,14 +49,14 @@ Zaehlregeln:
 - quantity_max = plausibel sichtbar
 - quantity_best = bestes Urteil
 
-Qualitaetsregeln:
+Qualitätsregeln:
 - Nicht raten wenn unklar.
 - Lieber weniger Items als falsche.
 - Keine unsichtbaren Produkte erfinden.
 
 Ablaufdatum:
 - Format DD.MM.YYYY oder null.
-- Nur schaetzen wenn Produkttyp klar erkennbar.
+- Nur schätzen wenn Produkttyp klar erkennbar.
 
 Output:
 - Gib ausschliesslich valides JSON im Schema zurueck.

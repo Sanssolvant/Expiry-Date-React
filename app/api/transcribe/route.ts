@@ -59,9 +59,9 @@ export async function POST(req: Request) {
             `Text: "${text}"\n\n` +
             `HEUTIGES DATUM (Europe/Zurich): ${todayStr}\n\n` +
             `WICHTIG ZUM DATUM:\n` +
-            `- Wenn im Text ein relatives Ablaufdatum vorkommt (z.B. "in zwei Wochen", "morgen", "uebermorgen", "in 3 Tagen", "naechsten Freitag"), rechne es immer in ein konkretes Datum um.\n` +
+            `- Wenn im Text ein relatives Ablaufdatum vorkommt (z.B. "in zwei Wochen", "morgen", "uebermorgen", "in 3 Tagen", "nächsten Freitag"), rechne es immer in ein konkretes Datum um.\n` +
             `- Gib ablaufdatum immer als festes Datum im Format "DD.MM.YYYY" zurueck.\n` +
-            `- Wenn kein Ablaufdatum erwaehnt ist: null.\n\n` +
+            `- Wenn kein Ablaufdatum erwähnt ist: null.\n\n` +
             `EINHEIT muss exakt aus dieser Liste sein, sonst ${defaultUnitJson}:\n` +
             `${JSON.stringify(allowedUnits)}\n\n` +
             `KATEGORIE muss exakt aus dieser Liste sein, sonst ${defaultCategoryJson}:\n` +

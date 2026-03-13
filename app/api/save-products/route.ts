@@ -37,7 +37,7 @@ async function cleanupRemovedImages(previousUrls: string[], nextUrls: Set<string
       try {
         await deleteObjectFromR2(key);
       } catch (error) {
-        console.warn('Bild konnte nicht aus R2 geloescht werden:', url, error);
+        console.warn('Bild konnte nicht aus R2 gelöscht werden:', url, error);
       }
     })
   );

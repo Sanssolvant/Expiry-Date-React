@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
-import { AppShell, Button, Group, Text } from '@mantine/core';
+import { ActionIcon, AppShell, Group, Text, Tooltip } from '@mantine/core';
+import { IconCalendar, IconChefHat, IconHome2, IconShoppingCart } from '@tabler/icons-react';
 import Link from 'next/link';
 import { NutritionInsights } from './General/NutritionInsights';
 import { Logo } from './General/Logo';
@@ -31,15 +32,50 @@ export function NutritionPage() {
           </Group>
 
           <Group gap="sm">
-            <Button component={Link} href="/dashboard" variant="light">
-              Dashboard
-            </Button>
-            <Button component={Link} href="/shopping-list" variant="light">
-              Einkaufszettel
-            </Button>
-            <Button component={Link} href="/expiry-calendar" variant="light">
-              MHD Kalender
-            </Button>
+            <Tooltip label="Dashboard">
+              <ActionIcon
+                component={Link}
+                href="/dashboard"
+                variant="light"
+                size="lg"
+                aria-label="Dashboard"
+              >
+                <IconHome2 size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Einkaufszettel">
+              <ActionIcon
+                component={Link}
+                href="/shopping-list"
+                variant="light"
+                size="lg"
+                aria-label="Einkaufszettel"
+              >
+                <IconShoppingCart size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Kalender">
+              <ActionIcon
+                component={Link}
+                href="/expiry-calendar"
+                variant="light"
+                size="lg"
+                aria-label="Kalender"
+              >
+                <IconCalendar size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Rezepte">
+              <ActionIcon
+                component={Link}
+                href="/recipes"
+                variant="light"
+                size="lg"
+                aria-label="Rezepte"
+              >
+                <IconChefHat size={18} />
+              </ActionIcon>
+            </Tooltip>
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}

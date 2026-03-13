@@ -19,9 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   IconCamera,
-  IconChefHat,
   IconCheck,
-  IconChartBar,
   IconDeviceFloppy,
   IconHandMove,
   IconMicrophone,
@@ -66,7 +64,6 @@ import { SpeechCreateModal } from './SpeechCreateModal';
 import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { PhotoCreateModal } from './PhotoCreateModal';
 import { InventoryStatsModal } from './InventoryStatsModal';
-import { RecipeSuggestionsModal } from './RecipeSuggestionsModal';
 
 export type CardData = {
   id: string;
@@ -97,7 +94,6 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const isDark = colorScheme === 'dark';
   const [photoOpen, setPhotoOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
-  const [recipesOpen, setRecipesOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [addingToShoppingListIds, setAddingToShoppingListIds] = useState<string[]>([]);
@@ -283,6 +279,17 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     };
 
     loadCards();
+  }, []);
+
+  useEffect(() => {
+    const onOpenInventoryStats = () => {
+      setStatsOpen(true);
+    };
+
+    window.addEventListener('open-inventory-stats', onOpenInventoryStats);
+    return () => {
+      window.removeEventListener('open-inventory-stats', onOpenInventoryStats);
+    };
   }, []);
 
   const filteredCards = useMemo(() => {
@@ -598,11 +605,6 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       />
 
       <InventoryStatsModal opened={statsOpen} onClose={() => setStatsOpen(false)} cards={cards} />
-      <RecipeSuggestionsModal
-        opened={recipesOpen}
-        onClose={() => setRecipesOpen(false)}
-        cards={cards}
-      />
 
       {/* Toolbar */}
       <Box
@@ -666,26 +668,6 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             ) : (
               <>
                 <IconDeviceFloppy size={18} style={{ marginRight: 10 }} /> Alle speichern
-              </>
-            )}
-          </Button>
-
-          <Button variant="outline" onClick={() => setStatsOpen(true)}>
-            {isMobile ? (
-              <IconChartBar size={18} />
-            ) : (
-              <>
-                <IconChartBar size={18} style={{ marginRight: 10 }} /> Statistik
-              </>
-            )}
-          </Button>
-
-          <Button variant="outline" onClick={() => setRecipesOpen(true)}>
-            {isMobile ? (
-              <IconChefHat size={18} />
-            ) : (
-              <>
-                <IconChefHat size={18} style={{ marginRight: 10 }} /> Rezepte
               </>
             )}
           </Button>
@@ -1125,5 +1107,3 @@ function InventoryCompactItem({
     </Card>
   );
 }
-
-

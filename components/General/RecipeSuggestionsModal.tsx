@@ -107,7 +107,7 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
 
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload?.error || 'Rezeptvorschlaege konnten nicht geladen werden.');
+        throw new Error(payload?.error || 'Rezeptvorschläge konnten nicht geladen werden.');
       }
 
       setData({

@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
-import { AppShell, Button, Group, Text } from '@mantine/core';
+import { ActionIcon, AppShell, Group, Text, Tooltip } from '@mantine/core';
+import { IconChartPie, IconChefHat, IconHome2, IconShoppingCart } from '@tabler/icons-react';
 import Link from 'next/link';
 import { ExpiryCalendar } from './General/ExpiryCalendar';
 import { Logo } from './General/Logo';
@@ -31,15 +32,50 @@ export function ExpiryCalendarPage() {
           </Group>
 
           <Group gap="sm">
-            <Button component={Link} href="/dashboard" variant="light">
-              Dashboard
-            </Button>
-            <Button component={Link} href="/shopping-list" variant="light">
-              Einkaufszettel
-            </Button>
-            <Button component={Link} href="/nutrition" variant="light">
-              Nährwertblick
-            </Button>
+            <Tooltip label="Dashboard">
+              <ActionIcon
+                component={Link}
+                href="/dashboard"
+                variant="light"
+                size="lg"
+                aria-label="Dashboard"
+              >
+                <IconHome2 size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Einkaufszettel">
+              <ActionIcon
+                component={Link}
+                href="/shopping-list"
+                variant="light"
+                size="lg"
+                aria-label="Einkaufszettel"
+              >
+                <IconShoppingCart size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Rezepte">
+              <ActionIcon
+                component={Link}
+                href="/recipes"
+                variant="light"
+                size="lg"
+                aria-label="Rezepte"
+              >
+                <IconChefHat size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Nährwertblick">
+              <ActionIcon
+                component={Link}
+                href="/nutrition"
+                variant="light"
+                size="lg"
+                aria-label="Nährwertblick"
+              >
+                <IconChartPie size={18} />
+              </ActionIcon>
+            </Tooltip>
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}

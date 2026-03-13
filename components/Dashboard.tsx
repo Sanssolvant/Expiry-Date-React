@@ -1,7 +1,14 @@
-'use client';
+﻿'use client';
 
-import { AppShell, Badge, Button, Group, Text } from '@mantine/core';
-import { IconShieldLock } from '@tabler/icons-react';
+import { ActionIcon, AppShell, Badge, Group, Text, Tooltip } from '@mantine/core';
+import {
+  IconCalendar,
+  IconChartBar,
+  IconChartPie,
+  IconChefHat,
+  IconShieldLock,
+  IconShoppingCart,
+} from '@tabler/icons-react';
 import DndGrid from './General/DndGrid';
 import { Logo } from './General/Logo';
 import { UserProfileMenu } from './General/UserProfileMenu';
@@ -13,6 +20,7 @@ import { useAdminAccess } from '@/app/lib/use-admin-access';
 export function Dashboard() {
   const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
   const { canAccess: isAdmin } = useAdminAccess();
+  const openStatistik = () => window.dispatchEvent(new Event('open-inventory-stats'));
 
   return (
     <AppShell header={{ height: { base: 60, md: 70, lg: 80 } }} padding="md">
@@ -43,15 +51,55 @@ export function Dashboard() {
                 Admin-Modus aktiv
               </Badge>
             ) : null}
-            <Button component={Link} href="/shopping-list" variant="light">
-              Einkaufszettel
-            </Button>
-            <Button component={Link} href="/expiry-calendar" variant="light">
-              Kalender
-            </Button>
-            <Button component={Link} href="/nutrition" variant="light">
-              Nährwertblick
-            </Button>
+            <Tooltip label="Einkaufszettel">
+              <ActionIcon
+                component={Link}
+                href="/shopping-list"
+                variant="light"
+                size="lg"
+                aria-label="Einkaufszettel"
+              >
+                <IconShoppingCart size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Kalender">
+              <ActionIcon
+                component={Link}
+                href="/expiry-calendar"
+                variant="light"
+                size="lg"
+                aria-label="Kalender"
+              >
+                <IconCalendar size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Rezepte">
+              <ActionIcon
+                component={Link}
+                href="/recipes"
+                variant="light"
+                size="lg"
+                aria-label="Rezepte"
+              >
+                <IconChefHat size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Statistik">
+              <ActionIcon variant="light" size="lg" aria-label="Statistik" onClick={openStatistik}>
+                <IconChartBar size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Nährwertblick">
+              <ActionIcon
+                component={Link}
+                href="/nutrition"
+                variant="light"
+                size="lg"
+                aria-label="Nährwertblick"
+              >
+                <IconChartPie size={18} />
+              </ActionIcon>
+            </Tooltip>
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}

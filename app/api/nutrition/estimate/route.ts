@@ -197,7 +197,7 @@ export async function GET() {
 
     const response = await client.responses.create({
       model: 'gpt-4o-mini',
-      temperature: 0.1,
+      temperature: 0,
       max_output_tokens: 10000,
       input: [
         {
@@ -208,14 +208,28 @@ export async function GET() {
         {
           role: 'user',
           content:
-            'Schätze für jeden Bestandseintrag ungefähre Makros und Kalorien basierend auf Name, Menge und Einheit.\n' +
-            'Wichtig:\n' +
-            '- Es reicht eine grobe, plausible Näherung.\n' +
-            '- Wenn ein Produkt nicht sinnvoll schätzbar ist: estimable=false und Makros 0.\n' +
+            'Schätze für jeden Bestandseintrag ungefähre Makros und Kalorien basierend auf Name, Menge und Einheit.\n\n' +
+            'Pflichtregeln:\n' +
             '- Nutze productId exakt aus der Eingabe.\n' +
             '- Gib für jedes Eingabeprodukt genau einen Eintrag zurück.\n' +
             '- confidence zwischen 0 und 1.\n' +
-            '- estimatedGrams auf essbare Menge in Gramm schätzen (oder null wenn unklar).\n\n' +
+            '- estimatedGrams = geschätzte essbare Gesamtmenge in Gramm (oder null wenn wirklich unklar).\n' +
+            '- Nur wenn gar keine sinnvolle Ableitung möglich ist: estimable=false und Makros 0.\n\n' +
+            'Erkennungsregeln (wichtig):\n' +
+            '- Entferne Marken-/Zusatzwörter und mappe auf ein Grundlebensmittel.\n' +
+            '- Nutze Singular/Plural und Sprachvarianten robust (de/en).\n' +
+            '- Einfache Standardprodukte sollen fast immer erkannt werden.\n' +
+            '- Beispiele für sichere Basiszuordnung:\n' +
+            '  ei/eier/egg -> Ei\n' +
+            '  milch/milk -> Milch\n' +
+            '  reis/rice, nudeln/pasta, brot/toast, kartoffel/potato,\n' +
+            '  apfel/apple, banane/banana, tomate/tomato, käse/cheese,\n' +
+            '  joghurt/yoghurt, huhn/chicken, thunfisch/tuna, öl/oil, butter, zucker.\n\n' +
+            'Einheiten und Mengen:\n' +
+            '- g direkt nutzen, kg = 1000 g.\n' +
+            '- ml/l in Gramm über plausible Dichte umrechnen (wenn unklar etwa 1 g/ml).\n' +
+            '- Stk/Packung mit typischen Standardgewichten abschätzen.\n' +
+            '- Ziel ist eine robuste Näherung, nicht absolute Exaktheit.\n\n' +
             `Eingabeprodukte:\n${JSON.stringify(inventoryPayload)}`,
         },
       ],
@@ -288,7 +302,7 @@ export async function GET() {
   } catch (error: any) {
     if (error?.status === 429) {
       return NextResponse.json(
-        { error: 'OpenAI Kontingent/Quota ueberschritten.' },
+        { error: 'OpenAI Kontingent/Quota überschritten.' },
         { status: 429 }
       );
     }
@@ -297,3 +311,4 @@ export async function GET() {
     return NextResponse.json({ error: 'Serverfehler bei Nährwert-Schätzung' }, { status: 500 });
   }
 }
+

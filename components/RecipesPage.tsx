@@ -1,14 +1,14 @@
 ﻿'use client';
 
 import { ActionIcon, AppShell, Group, Text, Tooltip } from '@mantine/core';
-import { IconCalendar, IconChartPie, IconChefHat, IconHome2 } from '@tabler/icons-react';
+import { IconCalendar, IconChartPie, IconHome2, IconShoppingCart } from '@tabler/icons-react';
 import Link from 'next/link';
-import ShoppingList from './General/ShoppingList';
 import { Logo } from './General/Logo';
+import { RecipeExplorer } from './General/RecipeExplorer';
 import { UserProfileMenu } from './General/UserProfileMenu';
 import { useWarnSettings } from './hooks/useWarnSettings';
 
-export function ShoppingListPage() {
+export function RecipesPage() {
   const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
 
   return (
@@ -27,7 +27,7 @@ export function ShoppingListPage() {
                 textOverflow: 'ellipsis',
               }}
             >
-              Einkaufszettel
+              Rezepte
             </Text>
           </Group>
 
@@ -43,6 +43,17 @@ export function ShoppingListPage() {
                 <IconHome2 size={18} />
               </ActionIcon>
             </Tooltip>
+            <Tooltip label="Einkaufszettel">
+              <ActionIcon
+                component={Link}
+                href="/shopping-list"
+                variant="light"
+                size="lg"
+                aria-label="Einkaufszettel"
+              >
+                <IconShoppingCart size={18} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Kalender">
               <ActionIcon
                 component={Link}
@@ -52,17 +63,6 @@ export function ShoppingListPage() {
                 aria-label="Kalender"
               >
                 <IconCalendar size={18} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Rezepte">
-              <ActionIcon
-                component={Link}
-                href="/recipes"
-                variant="light"
-                size="lg"
-                aria-label="Rezepte"
-              >
-                <IconChefHat size={18} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Nährwertblick">
@@ -87,8 +87,9 @@ export function ShoppingListPage() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <ShoppingList />
+        <RecipeExplorer />
       </AppShell.Main>
     </AppShell>
   );
 }
+

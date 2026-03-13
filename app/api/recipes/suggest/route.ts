@@ -399,15 +399,15 @@ export async function POST(req: NextRequest) {
     });
 
     const systemPrompt =
-      'Du bist ein sehr strenger Kochassistent. Antworte nur als valides JSON gemaess Schema.';
+      'Du bist ein sehr strenger Kochassistent. Antworte nur als valides JSON gemäss Schema.';
 
     const userPrompt =
-      `Aufgabe: Erzeuge Rezeptvorschlaege fuer diesen Vorrat:\n${inventoryLines.join('\n')}\n\n` +
+      `Aufgabe: Erzeuge Rezeptvorschläge fuer diesen Vorrat:\n${inventoryLines.join('\n')}\n\n` +
       `Absolute Regeln:\n` +
       `1) Nutze aktiv Websuche und liefere NUR bekannte Standardrezepte mit echter Quelle.\n` +
       `2) Pro Rezept MUSS sourceTitle + sourceUrl auf ein echtes Rezept verweisen.\n` +
       `3) KEINE unplausiblen Mischungen (z.B. Banane + Tomate im selben Gericht).\n` +
-      `4) Triff KEINE Vorrats-Annahmen. Grundzutaten (Mehl, Zucker, Eier, Oel, Backpulver ...) immer explizit auffuehren.\n` +
+      `4) Triff KEINE Vorrats-Annahmen. Grundzutaten (Mehl, Zucker, Eier, Öl, Backpulver ...) immer explizit auffuehren.\n` +
       `5) Schritte muessen detailliert sein: konkrete Mengen, Zeit, ggf. Temperatur.\n` +
       `6) Zutaten und Mengen metrisch und realistisch fuer Haushalt in DACH.\n` +
       `7) Keine Fantasiegerichte, keine erfundenen Quellen.\n\n` +
@@ -416,7 +416,7 @@ export async function POST(req: NextRequest) {
       `- dishType nur "sweet" oder "savory".\n` +
       `- ingredients: name + amount + optional.\n` +
       `- steps: title + detail + ingredientAmounts (Liste der in diesem Schritt verwendeten Mengenangaben).\n` +
-      `- detail soll vollstaendig und konkret sein.\n`;
+      `- detail soll vollständig und konkret sein.\n`;
 
     const requestBase: any = {
       model: 'gpt-5.2',
@@ -556,9 +556,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.error('Fehler bei Rezeptvorschlaegen:', error?.message || error);
+    console.error('Fehler bei Rezeptvorschlägen:', error?.message || error);
     return NextResponse.json(
-      { error: 'Serverfehler bei Rezeptvorschlaegen' },
+      { error: 'Serverfehler bei Rezeptvorschlägen' },
       { status: 500 }
     );
   }
