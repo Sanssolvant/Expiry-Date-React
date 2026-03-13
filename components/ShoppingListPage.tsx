@@ -34,6 +34,9 @@ export function ShoppingListPage() {
             <Button component={Link} href="/dashboard" variant="light">
               Dashboard
             </Button>
+            <Button component={Link} href="/expiry-calendar" variant="light">
+              Kalender
+            </Button>
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}

@@ -1,23 +1,19 @@
 'use client';
 
-import { AppShell, Badge, Button, Group, Text } from '@mantine/core';
-import { IconShieldLock } from '@tabler/icons-react';
-import DndGrid from './General/DndGrid';
+import { AppShell, Button, Group, Text } from '@mantine/core';
+import Link from 'next/link';
+import { ExpiryCalendar } from './General/ExpiryCalendar';
 import { Logo } from './General/Logo';
 import { UserProfileMenu } from './General/UserProfileMenu';
-import Link from 'next/link';
 import { useWarnSettings } from './hooks/useWarnSettings';
-import { useAdminAccess } from '@/app/lib/use-admin-access';
 
-
-export function Dashboard() {
+export function ExpiryCalendarPage() {
   const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
-  const { canAccess: isAdmin } = useAdminAccess();
 
   return (
     <AppShell header={{ height: { base: 60, md: 70, lg: 80 } }} padding="md">
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+      <AppShell.Header px="md">
+        <Group h="100%" justify="space-between">
           <Group gap="sm" align="center" style={{ minWidth: 0 }}>
             <Logo />
             <Text
@@ -30,24 +26,16 @@ export function Dashboard() {
                 textOverflow: 'ellipsis',
               }}
             >
-              Dashboard
+              Kalender
             </Text>
           </Group>
+
           <Group gap="sm">
-            {isAdmin ? (
-              <Badge
-                color="teal"
-                variant="light"
-                leftSection={<IconShieldLock size={12} />}
-              >
-                Admin-Modus aktiv
-              </Badge>
-            ) : null}
+            <Button component={Link} href="/dashboard" variant="light">
+              Dashboard
+            </Button>
             <Button component={Link} href="/shopping-list" variant="light">
               Einkaufszettel
-            </Button>
-            <Button component={Link} href="/expiry-calendar" variant="light">
-              Kalender
             </Button>
             <UserProfileMenu
               baldAb={warnBaldAb}
@@ -60,8 +48,9 @@ export function Dashboard() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <DndGrid warnBaldAb={warnBaldAb} warnAbgelaufenAb={warnAbgelaufenAb} />
+        <ExpiryCalendar warnBaldAb={warnBaldAb} warnAbgelaufenAb={warnAbgelaufenAb} />
       </AppShell.Main>
     </AppShell>
   );
 }
+

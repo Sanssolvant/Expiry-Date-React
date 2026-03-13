@@ -363,7 +363,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       saveCardsToDB(next, true).catch(() => {
         notifications.show({
           title: 'Auto-Speichern fehlgeschlagen',
-          message: 'Neue Reihenfolge wurde lokal gesetzt. Bitte spaeter "Alle speichern" druecken.',
+          message: 'Neue Reihenfolge wurde lokal gesetzt. Bitte später "Alle speichern" druecken.',
           color: 'red',
           icon: <IconX size={18} />,
         });
@@ -608,8 +608,16 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       <Box
         mt="md"
         style={{
+          position: 'sticky',
+          top: 'calc(var(--app-shell-header-offset, 60px) + 8px)',
+          zIndex: 30,
           overflowX: isMobile ? 'auto' : 'visible',
           WebkitOverflowScrolling: 'touch',
+          backgroundColor: isDark ? 'rgba(37, 38, 43, 0.92)' : 'rgba(255, 255, 255, 0.92)',
+          border: `1px solid ${isDark ? theme.colors.dark[3] : theme.colors.gray[3]}`,
+          borderRadius: 10,
+          padding: 8,
+          backdropFilter: 'blur(6px)',
           paddingBottom: 2,
         }}
       >
