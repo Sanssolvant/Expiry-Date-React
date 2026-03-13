@@ -2,12 +2,12 @@
 
 import { AppShell, Button, Group, Text } from '@mantine/core';
 import Link from 'next/link';
-import { ExpiryCalendar } from './General/ExpiryCalendar';
+import { NutritionInsights } from './General/NutritionInsights';
 import { Logo } from './General/Logo';
 import { UserProfileMenu } from './General/UserProfileMenu';
 import { useWarnSettings } from './hooks/useWarnSettings';
 
-export function ExpiryCalendarPage() {
+export function NutritionPage() {
   const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
 
   return (
@@ -26,7 +26,7 @@ export function ExpiryCalendarPage() {
                 textOverflow: 'ellipsis',
               }}
             >
-              Kalender
+              Nährwertblick
             </Text>
           </Group>
 
@@ -37,8 +37,8 @@ export function ExpiryCalendarPage() {
             <Button component={Link} href="/shopping-list" variant="light">
               Einkaufszettel
             </Button>
-            <Button component={Link} href="/nutrition" variant="light">
-              Nährwertblick
+            <Button component={Link} href="/expiry-calendar" variant="light">
+              MHD Kalender
             </Button>
             <UserProfileMenu
               baldAb={warnBaldAb}
@@ -51,8 +51,9 @@ export function ExpiryCalendarPage() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <ExpiryCalendar warnBaldAb={warnBaldAb} warnAbgelaufenAb={warnAbgelaufenAb} />
+        <NutritionInsights />
       </AppShell.Main>
     </AppShell>
   );
 }
+

@@ -37,6 +37,9 @@ export function ShoppingListPage() {
             <Button component={Link} href="/expiry-calendar" variant="light">
               Kalender
             </Button>
+            <Button component={Link} href="/nutrition" variant="light">
+              Nährwertblick
+            </Button>
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}
