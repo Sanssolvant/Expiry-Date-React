@@ -74,6 +74,15 @@ function sanitizeChoice(raw: unknown, allowed: string[], fallback: string): stri
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ error: 'OPENAI_API_KEY ist nicht gesetzt.' }, { status: 500 });
+    }
+
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const image = formData.get('image');
 
@@ -81,9 +90,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Kein Bild im Feld 'image' gefunden" }, { status: 400 });
     }
 
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
+    if (!image.type?.startsWith('image/')) {
+      return NextResponse.json({ error: 'Nur Bilddateien sind erlaubt.' }, { status: 400 });
+    }
+
+    const maxImageBytes = 10 * 1024 * 1024;
+    if (image.size > maxImageBytes) {
+      return NextResponse.json({ error: 'Bild ist zu gross (max. 10 MB).' }, { status: 400 });
+    }
+
     const { categories, units, defaultCategory, defaultUnit } = await getInventoryOptionsForUser(
-      session?.user?.id
+      session.user.id
     );
 
     const buffer = Buffer.from(await image.arrayBuffer());
@@ -212,6 +229,6 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message ?? 'Serverfehler' }, { status: 500 });
+    return NextResponse.json({ error: 'Serverfehler' }, { status: 500 });
   }
 }

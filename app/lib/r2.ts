@@ -154,6 +154,18 @@ export function extractR2KeyFromUrl(url: string) {
     .join('/');
 }
 
+export function isR2KeyOwnedByUser(key: string, userId: string) {
+  if (!key || !userId) {
+    return false;
+  }
+
+  const { keyPrefix } = getConfig();
+  const normalizedKey = trimSlashes(key);
+  const userPrefix = joinKey(keyPrefix, userId);
+
+  return normalizedKey === userPrefix || normalizedKey.startsWith(`${userPrefix}/`);
+}
+
 export async function putObjectToR2({ key, body, contentType, cacheControl }: PutObjectInput) {
   const config = getConfig();
   const client = await getS3Client();

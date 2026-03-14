@@ -16,22 +16,34 @@ function todayZurichDDMMYYYY(): string {
   }).format(new Date());
 }
 
-function isValidGermanDate(str: any): str is string {
+function isValidGermanDate(str: unknown): str is string {
   return typeof str === 'string' && /^\d{2}\.\d{2}\.\d{4}$/.test(str);
 }
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const text = body?.text;
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ error: 'OPENAI_API_KEY ist nicht gesetzt.' }, { status: 500 });
+    }
 
-    if (!text || typeof text !== 'string') {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return Response.json({ error: 'Nicht authentifiziert' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const text = typeof body?.text === 'string' ? body.text.trim() : '';
+
+    if (!text) {
       return Response.json({ error: 'No text provided' }, { status: 400 });
     }
 
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
+    if (text.length > 2000) {
+      return Response.json({ error: 'Text ist zu lang (max. 2000 Zeichen).' }, { status: 400 });
+    }
+
     const { units: allowedUnits, categories: allowedCats, defaultUnit, defaultCategory } =
-      await getInventoryOptionsForUser(session?.user?.id);
+      await getInventoryOptionsForUser(session.user.id);
     const todayStr = todayZurichDDMMYYYY();
     const defaultUnitJson = JSON.stringify(defaultUnit);
     const defaultCategoryJson = JSON.stringify(defaultCategory);
@@ -50,7 +62,7 @@ export async function POST(req: Request) {
             `Text: "${text}"\n\n` +
             `HEUTIGES DATUM (Europe/Zurich): ${todayStr}\n\n` +
             `DATUM-REGELN:\n` +
-            `- Relative Angaben (z.B. "in zwei Wochen", "morgen", "übermorgen", "nächsten Freitag") immer in fixes Datum umrechnen.\n` +
+            `- Relative Angaben (z.B. "in zwei Wochen", "morgen", "uebermorgen", "naechsten Freitag") immer in fixes Datum umrechnen.\n` +
             `- ablaufdatum IMMER "DD.MM.YYYY" oder null.\n\n` +
             `EINHEIT exakt aus:\n${JSON.stringify(allowedUnits)}\n\n` +
             `KATEGORIE exakt aus:\n${JSON.stringify(allowedCats)}\n\n` +
@@ -93,10 +105,10 @@ export async function POST(req: Request) {
   } catch (err: any) {
     if (err?.status === 429) {
       return Response.json(
-        { error: 'OpenAI Kontingent/Quota überschritten. Bitte Billing/Usage prüfen.' },
+        { error: 'OpenAI Kontingent/Quota ueberschritten. Bitte Billing/Usage pruefen.' },
         { status: 429 }
       );
     }
-    return Response.json({ error: err?.message ?? 'Unknown error' }, { status: 500 });
+    return Response.json({ error: 'Serverfehler' }, { status: 500 });
   }
 }

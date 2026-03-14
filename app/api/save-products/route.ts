@@ -3,7 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth';
 import { formatDateToDb } from '@/app/lib/dateUtils';
 import prisma from '@/app/lib/prisma';
-import { deleteObjectFromR2, extractR2KeyFromUrl } from '@/app/lib/r2';
+import {
+  createR2PublicUrl,
+  deleteObjectFromR2,
+  extractR2KeyFromUrl,
+  isR2KeyOwnedByUser,
+} from '@/app/lib/r2';
 
 type IncomingCard = {
   name?: unknown;
@@ -15,7 +20,35 @@ type IncomingCard = {
   image?: unknown;
 };
 
-async function cleanupRemovedImages(previousUrls: string[], nextUrls: Set<string>) {
+function normalizeImageUrlForUser(value: unknown, userId: string) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const cleaned = value.trim();
+  if (!cleaned) {
+    return '';
+  }
+
+  let key: string | null = null;
+  try {
+    key = extractR2KeyFromUrl(cleaned);
+  } catch {
+    key = null;
+  }
+
+  if (!key) {
+    return cleaned;
+  }
+
+  if (!isR2KeyOwnedByUser(key, userId)) {
+    return '';
+  }
+
+  return createR2PublicUrl(key);
+}
+
+async function cleanupRemovedImages(previousUrls: string[], nextUrls: Set<string>, userId: string) {
   const staleUrls = Array.from(new Set(previousUrls.filter((url) => url && !nextUrls.has(url))));
   if (staleUrls.length === 0) {
     return;
@@ -31,6 +64,10 @@ async function cleanupRemovedImages(previousUrls: string[], nextUrls: Set<string
       }
 
       if (!key) {
+        return;
+      }
+
+      if (!isR2KeyOwnedByUser(key, userId)) {
         return;
       }
 
@@ -65,12 +102,12 @@ export async function POST(req: NextRequest) {
       select: { bildUrl: true },
     });
     const previousUrls = previousProducts
-      .map((p) => (typeof p.bildUrl === 'string' ? p.bildUrl.trim() : ''))
+      .map((p) => normalizeImageUrlForUser(p.bildUrl, userId))
       .filter(Boolean);
 
     if (cards.length === 0) {
       const deleted = await prisma.produkt.deleteMany({ where: { userId } });
-      await cleanupRemovedImages(previousUrls, new Set());
+      await cleanupRemovedImages(previousUrls, new Set(), userId);
       return NextResponse.json({ success: true, deleted: deleted.count });
     }
 
@@ -87,15 +124,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Keine gueltigen Karten zum Speichern' }, { status: 400 });
     }
 
-    const nextImageUrls = new Set(
-      validCards
-        .map((card) => (typeof card.image === 'string' ? card.image.trim() : ''))
-        .filter(Boolean)
-    );
+    const normalizedCards = validCards.map((card) => ({
+      ...card,
+      image: normalizeImageUrlForUser(card.image, userId),
+    }));
+
+    const nextImageUrls = new Set(normalizedCards.map((card) => card.image).filter(Boolean));
 
     await prisma.produkt.deleteMany({ where: { userId } });
 
-    const data: any[] = validCards.map((card, index) => ({
+    const data: any[] = normalizedCards.map((card, index) => ({
       userId,
       name: card.name,
       menge: Number(card.menge),
@@ -103,12 +141,12 @@ export async function POST(req: NextRequest) {
       ablaufdatum: formatDateToDb(card.ablaufdatum as string),
       erfasstAm: formatDateToDb(card.erfasstAm as string),
       kategorie: typeof card.kategorie === 'string' ? card.kategorie : '',
-      bildUrl: typeof card.image === 'string' ? card.image : '',
+      bildUrl: card.image,
       sortOrder: index,
     }));
 
     const result = await prisma.produkt.createMany({ data: data as any });
-    await cleanupRemovedImages(previousUrls, nextImageUrls);
+    await cleanupRemovedImages(previousUrls, nextImageUrls, userId);
 
     return NextResponse.json({ success: true, count: result.count });
   } catch (error: any) {

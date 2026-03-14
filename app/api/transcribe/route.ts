@@ -22,11 +22,29 @@ function isValidGermanDate(str: any): str is string {
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ error: 'OPENAI_API_KEY ist nicht gesetzt.' }, { status: 500 });
+    }
+
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user?.id) {
+      return Response.json({ error: 'Nicht authentifiziert' }, { status: 401 });
+    }
+
     const form = await req.formData();
     const file = form.get('file');
 
     if (!(file instanceof File)) {
       return Response.json({ error: 'No audio file uploaded' }, { status: 400 });
+    }
+
+    if (!file.type?.startsWith('audio/')) {
+      return Response.json({ error: 'Nur Audiodateien sind erlaubt.' }, { status: 400 });
+    }
+
+    const maxAudioBytes = 8 * 1024 * 1024;
+    if (file.size > maxAudioBytes) {
+      return Response.json({ error: 'Audio ist zu gross (max. 8 MB).' }, { status: 400 });
     }
 
     const transcription = await openai.audio.transcriptions.create({
@@ -38,9 +56,8 @@ export async function POST(req: Request) {
 
     const text = (transcription as any).text?.trim?.() ?? '';
 
-    const session = await auth.api.getSession({ headers: await headers() }).catch(() => null);
     const { units: allowedUnits, categories: allowedCats, defaultUnit, defaultCategory } =
-      await getInventoryOptionsForUser(session?.user?.id);
+      await getInventoryOptionsForUser(session.user.id);
     const todayStr = todayZurichDDMMYYYY();
     const defaultUnitJson = JSON.stringify(defaultUnit);
     const defaultCategoryJson = JSON.stringify(defaultCategory);
@@ -110,6 +127,6 @@ export async function POST(req: Request) {
         { status: 429 }
       );
     }
-    return Response.json({ error: err?.message ?? 'Unknown error' }, { status: 500 });
+    return Response.json({ error: 'Serverfehler' }, { status: 500 });
   }
 }
