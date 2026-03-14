@@ -39,6 +39,11 @@ model User {
 
   @@map("user")
   @@unique([username])
+  @@index([createdAt])
+  @@index([emailVerified])
+  @@index([premium])
+  @@index([role])
+  @@index([banned, banExpires])
 }
 
 model Session {
@@ -55,6 +60,8 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Account {
@@ -75,6 +82,7 @@ model Account {
   idToken String? @db.Text
 
   @@map("account")
+  @@index([userId])
 }
 
 model Verification {
@@ -86,6 +94,8 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@map("verification")
+  @@index([identifier])
+  @@index([expiresAt])
 }
 
 model Produkt {
@@ -103,6 +113,9 @@ model Produkt {
   createdAt   DateTime @default(now())
 
   @@map("produkt")
+  @@index([userId, sortOrder])
+  @@index([userId, createdAt])
+  @@index([userId, ablaufdatum])
 }
 
 model UserSettings {
@@ -125,6 +138,7 @@ model UserSettings {
   user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("userSettings")
+  @@index([emailRemindersEnabled])
 }
 
 model ShoppingGroup {
@@ -139,6 +153,7 @@ model ShoppingGroup {
   items     ShoppingItem[]
 
   @@map("shopping_group")
+  @@index([userId, order])
 }
 
 model ShoppingItem {
@@ -156,5 +171,7 @@ model ShoppingItem {
   group     ShoppingGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@map("shopping_item")
+  @@index([userId, order])
+  @@index([userId, groupId, order])
 }
 

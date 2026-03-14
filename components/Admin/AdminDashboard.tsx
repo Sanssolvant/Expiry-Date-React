@@ -114,7 +114,7 @@ export function AdminDashboard({ adminDisplayName }: Props) {
     }
 
     try {
-      const res = await fetch('/api/admin/overview', {
+      const res = await fetch('/api/admin/overview?usersLimit=60', {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store',

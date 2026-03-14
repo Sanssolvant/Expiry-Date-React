@@ -21,6 +21,16 @@ export async function GET() {
     const produkte = await prisma.produkt.findMany({
       where: { userId: session.user.id },
       orderBy,
+      select: {
+        id: true,
+        name: true,
+        menge: true,
+        einheit: true,
+        ablaufdatum: true,
+        erfasstAm: true,
+        kategorie: true,
+        bildUrl: true,
+      },
     });
 
     return NextResponse.json({ produkte });

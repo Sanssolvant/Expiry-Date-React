@@ -1,7 +1,91 @@
+import { randomUUID } from 'crypto';
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/lib/auth';
 import prisma from '@/app/lib/prisma';
+
+type IncomingGroup = {
+  id?: unknown;
+  name?: unknown;
+  order?: unknown;
+};
+
+type IncomingItem = {
+  id?: unknown;
+  name?: unknown;
+  amount?: unknown;
+  done?: unknown;
+  order?: unknown;
+  groupId?: unknown;
+};
+
+type NormalizedGroup = {
+  id: string;
+  name: string;
+  order: number;
+};
+
+type NormalizedItem = {
+  id: string;
+  name: string;
+  amount: string;
+  done: boolean;
+  order: number;
+  groupId: string | null;
+};
+
+function normalizeOrder(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+}
+
+function normalizeGroup(group: IncomingGroup, idx: number): NormalizedGroup | null {
+  if (!group || typeof group.name !== 'string' || group.name.trim().length === 0) {
+    return null;
+  }
+
+  const id = typeof group.id === 'string' && group.id.trim().length > 0 ? group.id.trim() : randomUUID();
+  return {
+    id,
+    name: group.name.trim(),
+    order: normalizeOrder(group.order, idx),
+  };
+}
+
+function normalizeItem(item: IncomingItem, idx: number, validGroupIds: Set<string>): NormalizedItem | null {
+  if (!item || typeof item.name !== 'string' || item.name.trim().length === 0) {
+    return null;
+  }
+
+  const id = typeof item.id === 'string' && item.id.trim().length > 0 ? item.id.trim() : randomUUID();
+  const rawGroupId = typeof item.groupId === 'string' ? item.groupId.trim() : '';
+
+  return {
+    id,
+    name: item.name.trim(),
+    amount: typeof item.amount === 'string' ? item.amount.trim() : '',
+    done: Boolean(item.done),
+    order: normalizeOrder(item.order, idx),
+    groupId: rawGroupId && validGroupIds.has(rawGroupId) ? rawGroupId : null,
+  };
+}
+
+function sameGroup(a: { name: string; order: number }, b: NormalizedGroup) {
+  return a.name === b.name && a.order === b.order;
+}
+
+function sameItem(
+  a: { name: string; amount: string; done: boolean; order: number; groupId: string | null },
+  b: NormalizedItem
+) {
+  return (
+    a.name === b.name &&
+    (a.amount || '') === (b.amount || '') &&
+    Boolean(a.done) === Boolean(b.done) &&
+    a.order === b.order &&
+    (a.groupId || null) === (b.groupId || null)
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,18 +96,27 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id;
-
     const body = await req.json();
     const { groups, items } = body ?? {};
 
     if (!Array.isArray(groups) || !Array.isArray(items)) {
-      return NextResponse.json({ error: 'Ungültige Datenstruktur' }, { status: 400 });
+      return NextResponse.json({ error: 'Ungueltige Datenstruktur' }, { status: 400 });
     }
 
-    // 👉 Wenn alles leer ist → lösche alles vom User
-    if (groups.length === 0 && items.length === 0) {
-      const deletedItems = await prisma.shoppingItem.deleteMany({ where: { userId } });
-      const deletedGroups = await prisma.shoppingGroup.deleteMany({ where: { userId } });
+    const normalizedGroups = (groups as IncomingGroup[])
+      .map((group, idx) => normalizeGroup(group, idx))
+      .filter((group): group is NormalizedGroup => group != null);
+
+    const validGroupIds = new Set(normalizedGroups.map((group) => group.id));
+    const normalizedItems = (items as IncomingItem[])
+      .map((item, idx) => normalizeItem(item, idx, validGroupIds))
+      .filter((item): item is NormalizedItem => item != null);
+
+    if (normalizedGroups.length === 0 && normalizedItems.length === 0) {
+      const [deletedItems, deletedGroups] = await prisma.$transaction([
+        prisma.shoppingItem.deleteMany({ where: { userId } }),
+        prisma.shoppingGroup.deleteMany({ where: { userId } }),
+      ]);
 
       return NextResponse.json({
         success: true,
@@ -32,76 +125,121 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 🔍 Nur gültige Gruppen
-    const validGroups = groups.filter(
-      (g: any) => g && typeof g.name === 'string' && g.name.trim().length > 0
-    );
+    const [existingGroups, existingItems] = await prisma.$transaction([
+      prisma.shoppingGroup.findMany({
+        where: { userId },
+        select: { id: true, name: true, order: true },
+      }),
+      prisma.shoppingItem.findMany({
+        where: { userId },
+        select: { id: true, name: true, amount: true, done: true, order: true, groupId: true },
+      }),
+    ]);
 
-    // 🔍 Nur gültige Items
-    const validItems = items.filter(
-      (i: any) => i && typeof i.name === 'string' && i.name.trim().length > 0
-    );
+    const existingGroupsById = new Map(existingGroups.map((group) => [group.id, group]));
+    const existingItemsById = new Map(existingItems.map((item) => [item.id, item]));
 
-    // Optional: wenn Gruppen leer aber Items existieren -> ok (alles ungruppiert)
-    // Aber: wenn Items komplett leer sind, speichern wir trotzdem Gruppen (z.B. leere Gruppe "Kuchen")
-    if (validGroups.length === 0 && validItems.length === 0) {
-      return NextResponse.json({ error: 'Keine gültigen Daten zum Speichern' }, { status: 400 });
-    }
+    const incomingGroupIds = new Set(normalizedGroups.map((group) => group.id));
+    const incomingItemIds = new Set(normalizedItems.map((item) => item.id));
 
-    // 🧹 Vorher alles löschen (erst Items, dann Gruppen wegen FK)
-    await prisma.shoppingItem.deleteMany({ where: { userId } });
-    await prisma.shoppingGroup.deleteMany({ where: { userId } });
+    const groupsToDelete = existingGroups
+      .map((group) => group.id)
+      .filter((id) => !incomingGroupIds.has(id));
+    const itemsToDelete = existingItems
+      .map((item) => item.id)
+      .filter((id) => !incomingItemIds.has(id));
 
-    // ✅ Gruppen speichern. createMany gibt keine IDs zurück -> wir erzeugen IDs im Client (empfohlen).
-    // Falls du IDs im Client setzt, kannst du hier auch "id: g.id" mitschicken.
-    // Ich unterstütze beides:
-    const groupDataWithIds = validGroups.map((g: any, idx: number) => ({
-      id: typeof g.id === 'string' && g.id.trim().length > 0 ? g.id : undefined,
-      userId,
-      name: g.name.trim(),
-      order: Number.isFinite(Number(g.order)) ? Number(g.order) : idx,
-    }));
+    const groupsToCreate = normalizedGroups.filter((group) => !existingGroupsById.has(group.id));
+    const groupsToUpdate = normalizedGroups.filter((group) => {
+      const existing = existingGroupsById.get(group.id);
+      return existing && !sameGroup(existing, group);
+    });
 
-    // Prisma createMany erlaubt "id" nur, wenn es nicht undefined ist:
-    const cleanedGroupData = groupDataWithIds.map(({ id, ...rest }: any) =>
-      id ? { id, ...rest } : rest
-    );
+    const itemsToCreate = normalizedItems.filter((item) => !existingItemsById.has(item.id));
+    const itemsToUpdate = normalizedItems.filter((item) => {
+      const existing = existingItemsById.get(item.id);
+      return existing && !sameItem(existing, item);
+    });
 
-    if (cleanedGroupData.length > 0) {
-      await prisma.shoppingGroup.createMany({ data: cleanedGroupData });
-    }
+    await prisma.$transaction(async (tx) => {
+      if (itemsToDelete.length > 0) {
+        await tx.shoppingItem.deleteMany({
+          where: {
+            userId,
+            id: { in: itemsToDelete },
+          },
+        });
+      }
 
-    // Für FK-Sicherheit: nur groupId übernehmen, wenn sie in validGroups vorkommt
-    const validGroupIds = new Set(
-      validGroups
-        .map((g: any) => (typeof g.id === 'string' ? g.id : null))
-        .filter(Boolean)
-    );
+      for (const group of groupsToCreate) {
+        await tx.shoppingGroup.create({
+          data: {
+            id: group.id,
+            userId,
+            name: group.name,
+            order: group.order,
+          },
+        });
+      }
 
-    // ✅ Items speichern
-    const itemDataWithIds = validItems.map((i: any, idx: number) => ({
-      id: typeof i.id === 'string' && i.id.trim().length > 0 ? i.id : undefined,
-      userId,
-      name: i.name.trim(),
-      amount: typeof i.amount === 'string' ? i.amount : '',
-      done: Boolean(i.done),
-      order: Number.isFinite(Number(i.order)) ? Number(i.order) : idx,
-      groupId: i.groupId && validGroupIds.has(i.groupId) ? i.groupId : null,
-    }));
+      for (const group of groupsToUpdate) {
+        await tx.shoppingGroup.update({
+          where: { id: group.id },
+          data: {
+            name: group.name,
+            order: group.order,
+          },
+        });
+      }
 
-    const cleanedItemData = itemDataWithIds.map(({ id, ...rest }: any) =>
-      id ? { id, ...rest } : rest
-    );
+      for (const item of itemsToCreate) {
+        await tx.shoppingItem.create({
+          data: {
+            id: item.id,
+            userId,
+            name: item.name,
+            amount: item.amount,
+            done: item.done,
+            order: item.order,
+            groupId: item.groupId,
+          },
+        });
+      }
 
-    if (cleanedItemData.length > 0) {
-      const result = await prisma.shoppingItem.createMany({ data: cleanedItemData });
-      return NextResponse.json({ success: true, count: result.count });
-    }
+      for (const item of itemsToUpdate) {
+        await tx.shoppingItem.update({
+          where: { id: item.id },
+          data: {
+            name: item.name,
+            amount: item.amount,
+            done: item.done,
+            order: item.order,
+            groupId: item.groupId,
+          },
+        });
+      }
 
-    // Falls nur Gruppen gespeichert wurden:
-    return NextResponse.json({ success: true, count: 0 });
+      if (groupsToDelete.length > 0) {
+        await tx.shoppingGroup.deleteMany({
+          where: {
+            userId,
+            id: { in: groupsToDelete },
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      groupsCreated: groupsToCreate.length,
+      groupsUpdated: groupsToUpdate.length,
+      groupsDeleted: groupsToDelete.length,
+      itemsCreated: itemsToCreate.length,
+      itemsUpdated: itemsToUpdate.length,
+      itemsDeleted: itemsToDelete.length,
+    });
   } catch (error: any) {
-    console.error('❌ Fehler beim Speichern Einkaufszettel:', error?.message || error);
+    console.error('Fehler beim Speichern Einkaufszettel:', error?.message || error);
     return NextResponse.json({ error: 'Serverfehler beim Speichern' }, { status: 500 });
   }
 }

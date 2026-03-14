@@ -11,6 +11,7 @@ import {
 } from '@/app/lib/r2';
 
 type IncomingCard = {
+  id?: unknown;
   name?: unknown;
   menge?: unknown;
   einheit?: unknown;
@@ -18,6 +19,30 @@ type IncomingCard = {
   erfasstAm?: unknown;
   kategorie?: unknown;
   image?: unknown;
+};
+
+type NormalizedCard = {
+  id: string | null;
+  name: string;
+  menge: number;
+  einheit: string;
+  ablaufdatum: Date;
+  erfasstAm: Date;
+  kategorie: string;
+  bildUrl: string;
+  sortOrder: number;
+};
+
+type ExistingProduct = {
+  id: string;
+  name: string;
+  menge: number;
+  einheit: string;
+  ablaufdatum: Date;
+  erfasstAm: Date;
+  kategorie: string;
+  bildUrl: string;
+  sortOrder: number;
 };
 
 function normalizeImageUrlForUser(value: unknown, userId: string) {
@@ -63,20 +88,57 @@ async function cleanupRemovedImages(previousUrls: string[], nextUrls: Set<string
         key = null;
       }
 
-      if (!key) {
-        return;
-      }
-
-      if (!isR2KeyOwnedByUser(key, userId)) {
+      if (!key || !isR2KeyOwnedByUser(key, userId)) {
         return;
       }
 
       try {
         await deleteObjectFromR2(key);
       } catch (error) {
-        console.warn('Bild konnte nicht aus R2 gelöscht werden:', url, error);
+        console.warn('Bild konnte nicht aus R2 geloescht werden:', url, error);
       }
     })
+  );
+}
+
+function normalizeCard(card: IncomingCard, index: number, userId: string): NormalizedCard | null {
+  if (
+    !card ||
+    typeof card.name !== 'string' ||
+    card.name.trim().length === 0 ||
+    typeof card.ablaufdatum !== 'string' ||
+    typeof card.erfasstAm !== 'string'
+  ) {
+    return null;
+  }
+
+  const id = typeof card.id === 'string' && card.id.trim().length > 0 ? card.id.trim() : null;
+  const mengeRaw = Number(card.menge);
+  const menge = Number.isFinite(mengeRaw) ? mengeRaw : 0;
+
+  return {
+    id,
+    name: card.name.trim(),
+    menge,
+    einheit: typeof card.einheit === 'string' && card.einheit.trim() ? card.einheit.trim() : 'Stk',
+    ablaufdatum: formatDateToDb(card.ablaufdatum),
+    erfasstAm: formatDateToDb(card.erfasstAm),
+    kategorie: typeof card.kategorie === 'string' ? card.kategorie.trim() : '',
+    bildUrl: normalizeImageUrlForUser(card.image, userId),
+    sortOrder: index,
+  };
+}
+
+function sameProductData(existing: ExistingProduct, incoming: NormalizedCard) {
+  return (
+    existing.name === incoming.name &&
+    Number(existing.menge) === Number(incoming.menge) &&
+    existing.einheit === incoming.einheit &&
+    existing.ablaufdatum.getTime() === incoming.ablaufdatum.getTime() &&
+    existing.erfasstAm.getTime() === incoming.erfasstAm.getTime() &&
+    existing.kategorie === incoming.kategorie &&
+    (existing.bildUrl || '') === (incoming.bildUrl || '') &&
+    existing.sortOrder === incoming.sortOrder
   );
 }
 
@@ -91,17 +153,28 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
 
     const body = await req.json();
-    const { cards } = body;
+    const { cards } = body ?? {};
 
     if (!Array.isArray(cards)) {
       return NextResponse.json({ error: 'Ungueltige Datenstruktur' }, { status: 400 });
     }
 
-    const previousProducts = await prisma.produkt.findMany({
+    const existingProducts = (await prisma.produkt.findMany({
       where: { userId },
-      select: { bildUrl: true },
-    });
-    const previousUrls = previousProducts
+      select: {
+        id: true,
+        name: true,
+        menge: true,
+        einheit: true,
+        ablaufdatum: true,
+        erfasstAm: true,
+        kategorie: true,
+        bildUrl: true,
+        sortOrder: true,
+      } as any,
+    })) as unknown as ExistingProduct[];
+
+    const previousUrls = existingProducts
       .map((p) => normalizeImageUrlForUser(p.bildUrl, userId))
       .filter(Boolean);
 
@@ -111,44 +184,108 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, deleted: deleted.count });
     }
 
-    const validCards = (cards as IncomingCard[]).filter(
-      (card) =>
-        card &&
-        typeof card.name === 'string' &&
-        card.name.trim().length > 0 &&
-        typeof card.ablaufdatum === 'string' &&
-        typeof card.erfasstAm === 'string'
-    );
+    const normalizedCards = (cards as IncomingCard[])
+      .map((card, index) => normalizeCard(card, index, userId))
+      .filter((card): card is NormalizedCard => card != null);
 
-    if (validCards.length === 0) {
+    if (normalizedCards.length === 0) {
       return NextResponse.json({ error: 'Keine gueltigen Karten zum Speichern' }, { status: 400 });
     }
 
-    const normalizedCards = validCards.map((card) => ({
-      ...card,
-      image: normalizeImageUrlForUser(card.image, userId),
-    }));
+    const existingById = new Map(existingProducts.map((product) => [product.id, product]));
+    const seenUpdateIds = new Set<string>();
+    const updates: Array<{ id: string; card: NormalizedCard }> = [];
+    const creates: NormalizedCard[] = [];
 
-    const nextImageUrls = new Set(normalizedCards.map((card) => card.image).filter(Boolean));
+    for (const card of normalizedCards) {
+      if (card.id && existingById.has(card.id) && !seenUpdateIds.has(card.id)) {
+        updates.push({ id: card.id, card });
+        seenUpdateIds.add(card.id);
+        continue;
+      }
 
-    await prisma.produkt.deleteMany({ where: { userId } });
+      creates.push(card);
+    }
 
-    const data: any[] = normalizedCards.map((card, index) => ({
-      userId,
-      name: card.name,
-      menge: Number(card.menge),
-      einheit: typeof card.einheit === 'string' ? card.einheit : 'Stk',
-      ablaufdatum: formatDateToDb(card.ablaufdatum as string),
-      erfasstAm: formatDateToDb(card.erfasstAm as string),
-      kategorie: typeof card.kategorie === 'string' ? card.kategorie : '',
-      bildUrl: card.image,
-      sortOrder: index,
-    }));
+    const deletedIds = existingProducts
+      .map((product) => product.id)
+      .filter((id) => !seenUpdateIds.has(id));
 
-    const result = await prisma.produkt.createMany({ data: data as any });
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    await prisma.$transaction(async (tx) => {
+      if (deletedIds.length > 0) {
+        await tx.produkt.deleteMany({
+          where: {
+            userId,
+            id: { in: deletedIds },
+          },
+        });
+      }
+
+      for (const entry of updates) {
+        const existing = existingById.get(entry.id);
+        if (!existing || sameProductData(existing, entry.card)) {
+          continue;
+        }
+
+        await tx.produkt.update({
+          where: { id: entry.id },
+          data: {
+            name: entry.card.name,
+            menge: entry.card.menge,
+            einheit: entry.card.einheit,
+            ablaufdatum: entry.card.ablaufdatum,
+            erfasstAm: entry.card.erfasstAm,
+            kategorie: entry.card.kategorie,
+            bildUrl: entry.card.bildUrl,
+            sortOrder: entry.card.sortOrder,
+          } as any,
+        });
+
+        updatedCount += 1;
+      }
+
+      for (const card of creates) {
+        const baseData = {
+          userId,
+          name: card.name,
+          menge: card.menge,
+          einheit: card.einheit,
+          ablaufdatum: card.ablaufdatum,
+          erfasstAm: card.erfasstAm,
+          kategorie: card.kategorie,
+          bildUrl: card.bildUrl,
+          sortOrder: card.sortOrder,
+        };
+
+        try {
+          await tx.produkt.create({
+            data: (card.id ? { id: card.id, ...baseData } : baseData) as any,
+          });
+        } catch (error: any) {
+          if (card.id && error?.code === 'P2002') {
+            await tx.produkt.create({ data: baseData as any });
+          } else {
+            throw error;
+          }
+        }
+
+        createdCount += 1;
+      }
+    });
+
+    const nextImageUrls = new Set(normalizedCards.map((card) => card.bildUrl).filter(Boolean));
     await cleanupRemovedImages(previousUrls, nextImageUrls, userId);
 
-    return NextResponse.json({ success: true, count: result.count });
+    return NextResponse.json({
+      success: true,
+      count: normalizedCards.length,
+      created: createdCount,
+      updated: updatedCount,
+      deleted: deletedIds.length,
+    });
   } catch (error: any) {
     console.error('Fehler beim Speichern:', error?.message || error);
     return NextResponse.json({ error: 'Serverfehler beim Speichern' }, { status: 500 });

@@ -20,6 +20,7 @@ import {
 import { DatePicker } from '@mantine/dates';
 import { useMediaQuery } from '@mantine/hooks';
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
+import { loadProductsCached } from '@/app/lib/products-client-cache';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { WarnLevel } from '@/app/types';
 
@@ -166,26 +167,20 @@ export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarP
       setError(null);
 
       try {
-        const res = await fetch('/api/load-products', { method: 'GET', credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data?.error || 'Produkte konnten nicht geladen werden.');
-        }
+        const products = await loadProductsCached();
 
         if (!mounted) {
           return;
         }
 
-        const cardsFromDb: StoredCard[] = Array.isArray(data?.produkte)
-          ? data.produkte.map((prod: any) => ({
-              id: String(prod.id),
-              name: String(prod.name ?? '').trim(),
-              menge: Number(prod.menge ?? 0),
-              einheit: String(prod.einheit ?? 'Stk'),
-              ablaufdatum: formatDateToDisplay(prod.ablaufdatum),
-              kategorie: String(prod.kategorie ?? '').trim(),
-            }))
-          : [];
+        const cardsFromDb: StoredCard[] = products.map((prod: any) => ({
+          id: String(prod.id),
+          name: String(prod.name ?? '').trim(),
+          menge: Number(prod.menge ?? 0),
+          einheit: String(prod.einheit ?? 'Stk'),
+          ablaufdatum: formatDateToDisplay(prod.ablaufdatum),
+          kategorie: String(prod.kategorie ?? '').trim(),
+        }));
 
         setRawCards(cardsFromDb);
       } catch (loadError: any) {

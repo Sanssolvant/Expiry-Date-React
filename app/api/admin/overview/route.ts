@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import {
   getAdminAccess,
   isBanCurrentlyActive,
@@ -37,11 +37,21 @@ function dateLabel(date: Date) {
   return `${day}.${month}`;
 }
 
-export async function GET() {
+function parseUsersLimit(value: string | null) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return 60;
+  }
+  return Math.max(20, Math.min(120, Math.trunc(parsed)));
+}
+
+export async function GET(req: NextRequest) {
   const access = await getAdminAccess();
   if (!access.ok) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  const usersLimit = parseUsersLimit(req.nextUrl.searchParams.get('usersLimit'));
 
   const now = new Date();
   const nowUnix = Math.floor(now.getTime() / 1000);
@@ -91,7 +101,7 @@ export async function GET() {
       }),
       prisma.user.findMany({
         orderBy: { createdAt: 'desc' },
-        take: 120,
+        take: usersLimit,
         select: {
           id: true,
           name: true,
@@ -258,6 +268,7 @@ export async function GET() {
         expiredProducts,
         remindersEnabledUsers,
         usersWithUrgentProducts: urgentUserIds.size,
+        usersReturned: users.length,
       },
       charts: {
         userGrowth30d,

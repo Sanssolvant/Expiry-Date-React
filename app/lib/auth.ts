@@ -1,11 +1,10 @@
-﻿import { PrismaClient } from '@prisma/client';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { nextCookies } from 'better-auth/next-js';
 import { openAPI, username } from 'better-auth/plugins';
+import prisma from './prisma';
 import { sendEmail } from './send-email';
 
-const prisma = new PrismaClient();
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -54,3 +53,4 @@ export const auth = betterAuth({
     'https://melinda-unappreciated-rory.ngrok-free.dev',
   ],
 });
+

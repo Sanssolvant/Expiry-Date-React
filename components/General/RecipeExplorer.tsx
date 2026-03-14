@@ -30,6 +30,7 @@ import {
   IconShoppingCartPlus,
   IconToolsKitchen2,
 } from '@tabler/icons-react';
+import { loadProductsCached } from '@/app/lib/products-client-cache';
 
 type InventoryCard = {
   id: string;
@@ -109,21 +110,15 @@ export function RecipeExplorer() {
       setProductsError('');
 
       try {
-        const res = await fetch('/api/load-products', { method: 'GET', credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data?.error || 'Produkte konnten nicht geladen werden.');
-        }
+        const productsRaw = await loadProductsCached();
 
-        const mapped: InventoryCard[] = Array.isArray(data?.produkte)
-          ? data.produkte.map((prod: any) => ({
-              id: String(prod.id),
-              name: String(prod.name ?? '').trim(),
-              menge: Number(prod.menge ?? 0),
-              einheit: String(prod.einheit ?? 'Stk'),
-              kategorie: String(prod.kategorie ?? '').trim(),
-            }))
-          : [];
+        const mapped: InventoryCard[] = productsRaw.map((prod: any) => ({
+          id: String(prod.id),
+          name: String(prod.name ?? '').trim(),
+          menge: Number(prod.menge ?? 0),
+          einheit: String(prod.einheit ?? 'Stk'),
+          kategorie: String(prod.kategorie ?? '').trim(),
+        }));
 
         setProducts(mapped);
         setSelectedIds(mapped.map((item) => item.id));

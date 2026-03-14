@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -53,6 +53,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 
 import { formatDateToDisplay } from '@/app/lib/dateUtils';
+import { invalidateProductsCache, loadProductsCached } from '@/app/lib/products-client-cache';
 import { USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { parseAblauf, WarnLevel, warnPriority, type Filters } from '@/app/types';
@@ -97,6 +98,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
   const [loading, setLoading] = useState(false);
   const [addingToShoppingListIds, setAddingToShoppingListIds] = useState<string[]>([]);
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const lastAutoSaveSnapshotRef = useRef('');
 
   const [rawCards, setRawCards] = useState<Omit<CardData, 'warnLevel'>[]>([]);
   const [speechOpen, setSpeechOpen] = useState(false);
@@ -254,11 +257,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   useEffect(() => {
     const loadCards = async () => {
       try {
-        const res = await fetch('/api/load-products', { method: 'GET', credentials: 'include' });
-        const data = await res.json();
-
-        if (res.ok && data.produkte) {
-          const cardsFromDB = data.produkte.map((prod: any) => ({
+        const products = await loadProductsCached();
+        const cardsFromDB = products.map((prod: any) => ({
             id: String(prod.id),
             name: prod.name,
             menge: prod.menge,
@@ -268,11 +268,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             kategorie: prod.kategorie,
             image: prod.bildUrl || '',
           }));
-
-          setRawCards(cardsFromDB);
-        } else {
-          console.warn('Ladefehler:', data?.error);
-        }
+        setRawCards(cardsFromDB);
       } catch (err) {
         console.error('❌ Fehler beim Kartenladen:', err);
       }
@@ -289,6 +285,14 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     window.addEventListener('open-inventory-stats', onOpenInventoryStats);
     return () => {
       window.removeEventListener('open-inventory-stats', onOpenInventoryStats);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+      }
     };
   }, []);
 
@@ -367,14 +371,10 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
       const next = arrayMove(prev, oldIndex, newIndex);
 
-      saveCardsToDB(next, true).catch(() => {
-        notifications.show({
-          title: 'Auto-Speichern fehlgeschlagen',
-          message: 'Neue Reihenfolge wurde lokal gesetzt. Bitte später "Alle speichern" druecken.',
-          color: 'red',
-          icon: <IconX size={18} />,
-        });
-      });
+      scheduleAutoSave(
+        next,
+        'Neue Reihenfolge wurde lokal gesetzt. Bitte spaeter "Alle speichern" druecken.'
+      );
 
       return next;
     });
@@ -409,8 +409,37 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         icon: <IconCheck size={18} />,
       });
     }
-
+    invalidateProductsCache();
     return true;
+  };
+
+  const scheduleAutoSave = (
+    nextCards: Omit<CardData, 'warnLevel'>[],
+    errorMessage: string
+  ) => {
+    const snapshot = JSON.stringify(nextCards);
+    if (snapshot === lastAutoSaveSnapshotRef.current) {
+      return;
+    }
+
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      saveCardsToDB(nextCards, true)
+        .then(() => {
+          lastAutoSaveSnapshotRef.current = snapshot;
+        })
+        .catch(() => {
+          notifications.show({
+            title: 'Auto-Speichern fehlgeschlagen',
+            message: errorMessage,
+            color: 'red',
+            icon: <IconX size={18} />,
+          });
+        });
+    }, 450);
   };
 
   const handleCreateCard = async (card: CardData) => {
@@ -424,32 +453,20 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     setRawCards(nextRawCards);
     setEditingCard(null);
 
-    try {
-      await saveCardsToDB(nextRawCards, true);
-    } catch {
-      notifications.show({
-        title: 'Auto-Speichern fehlgeschlagen',
-        message: 'Bitte Verbindung prüfen oder später „Alle speichern“ drücken.',
-        color: 'red',
-        icon: <IconX size={18} />,
-      });
-    }
+    scheduleAutoSave(
+      nextRawCards,
+      'Bitte Verbindung pruefen oder spaeter "Alle speichern" druecken.'
+    );
   };
 
   const handleDelete = async (id: string) => {
     const nextRawCards = rawCards.filter((card) => card.id !== id);
     setRawCards(nextRawCards);
 
-    try {
-      await saveCardsToDB(nextRawCards, true);
-    } catch {
-      notifications.show({
-        title: 'Auto-Speichern fehlgeschlagen',
-        message: 'Löschen wurde lokal übernommen. Bitte später „Alle speichern“ drücken.',
-        color: 'red',
-        icon: <IconX size={18} />,
-      });
-    }
+    scheduleAutoSave(
+      nextRawCards,
+      'Loeschen wurde lokal uebernommen. Bitte spaeter "Alle speichern" druecken.'
+    );
   };
 
   const handleAddToShoppingList = async (card: CardData) => {
@@ -501,8 +518,12 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const handleSave = async () => {
     setLoading(true);
     try {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+      }
       const payload = cards.map(({ warnLevel, ...rest }) => rest);
       await saveCardsToDB(payload, false);
+      lastAutoSaveSnapshotRef.current = JSON.stringify(payload);
     } finally {
       setLoading(false);
     }
@@ -580,15 +601,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
           setPhotoOpen(false);
 
-          // Auto-save wie du es schon machst:
-          saveCardsToDB(nextRaw, true).catch(() => {
-            notifications.show({
-              title: 'Auto-Speichern fehlgeschlagen',
-              message: 'Bitte später „Alle speichern“ drücken.',
-              color: 'red',
-              icon: <IconX size={18} />,
-            });
-          });
+          scheduleAutoSave(nextRaw, 'Bitte spaeter "Alle speichern" druecken.');
         }}
       />
 
@@ -1107,3 +1120,5 @@ function InventoryCompactItem({
     </Card>
   );
 }
+
+
