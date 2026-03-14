@@ -131,24 +131,29 @@ export async function PATCH(req: NextRequest) {
       const reason = sanitizeReason(body?.reason) || 'Durch Admin gesperrt.';
       const nowUnix = Math.floor(Date.now() / 1000);
 
-      const updated = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          banned: true,
-          banReason: reason,
-          banExpires: durationHours > 0 ? nowUnix + durationHours * 3600 : null,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          banned: true,
-          banReason: true,
-          banExpires: true,
-          updatedAt: true,
-        },
-      });
+      const [updated] = await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            banned: true,
+            banReason: reason,
+            banExpires: durationHours > 0 ? nowUnix + durationHours * 3600 : null,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            banned: true,
+            banReason: true,
+            banExpires: true,
+            updatedAt: true,
+          },
+        }),
+        prisma.session.deleteMany({
+          where: { userId },
+        }),
+      ]);
 
       return NextResponse.json({
         ok: true,

@@ -35,6 +35,7 @@ export function LoginForm() {
   const router = useRouter();
   const { type, text } = useAuthStatusMessage();
   const [loading, setLoading] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
 
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
@@ -67,14 +68,24 @@ export function LoginForm() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (form.validate().hasErrors) return;
+    setCustomError(null);
 
     const identifier = form.values.identifier.trim();
     const password = form.values.password;
 
     const onError = (ctx: any) => {
       setLoading(false);
+      const status = Number(ctx?.error?.status);
+      const code = typeof ctx?.error?.code === 'string' ? ctx.error.code : '';
+      const rawMessage = typeof ctx?.error?.message === 'string' ? ctx.error.message : '';
+      const isBanned = code === 'USER_BANNED' || /gesperrt|sperre|banned/i.test(rawMessage);
 
-      if (ctx?.error?.status === 403) {
+      if (isBanned) {
+        setCustomError(rawMessage || 'Dein Account ist derzeit gesperrt.');
+        return;
+      }
+
+      if (status === 403) {
         router.push(AUTH_REDIRECTS.ERROR_EMAIL_NOT_VERIFIED);
       } else {
         router.push(AUTH_REDIRECTS.ERROR_INVALID_CREDENTIALS);
@@ -149,6 +160,7 @@ export function LoginForm() {
           }}
         >
           {/* Status messages */}
+          {customError && <NotificationElementError text={customError} />}
           {type === 'success' && <NotificationElementSuccess text={text} />}
           {type === 'error' && <NotificationElementError text={text} />}
 
