@@ -147,10 +147,10 @@ export default function ShoppingList() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const getContainerOfId = (id: string, list: EinkaufsItem[]) => {
-    if (isContainerId(id)) return id;
+    if (isContainerId(id)) {return id;}
 
     const item = list.find((x) => x.id === id);
-    if (!item) return UNGROUPED_CONTAINER;
+    if (!item) {return UNGROUPED_CONTAINER;}
 
     return item.groupId ? groupContainerId(item.groupId) : UNGROUPED_CONTAINER;
   };
@@ -180,7 +180,7 @@ export default function ShoppingList() {
 
       ids.forEach((id, idx) => {
         const i = next.findIndex((x) => x.id === id);
-        if (i !== -1) next[i] = { ...next[i], order: idx };
+        if (i !== -1) {next[i] = { ...next[i], order: idx };}
       });
     });
 
@@ -189,12 +189,12 @@ export default function ShoppingList() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {return;}
 
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    if (activeId === overId) return;
+    if (activeId === overId) {return;}
 
     const current = items;
 
@@ -208,7 +208,7 @@ export default function ShoppingList() {
     const toIds = getIdsInContainer(toContainer, current);
 
     const activeIndex = fromIds.indexOf(activeId);
-    if (activeIndex === -1) return;
+    if (activeIndex === -1) {return;}
 
     let nextItems = [...current];
 
@@ -232,14 +232,14 @@ export default function ShoppingList() {
       // Insert index
       if (overIsContainer) {
         return [...toNow.filter((id) => id !== activeId), activeId];
-      } else {
+      } 
         const overIndex = toNow.indexOf(overId);
         const base = toNow.filter((id) => id !== activeId);
         const insertAt = overIndex === -1 ? base.length : overIndex;
         const copy = [...base];
         copy.splice(insertAt, 0, activeId);
         return copy;
-      }
+      
     })();
 
     // 3) order in betroffenen Containern neu setzen
@@ -254,7 +254,7 @@ export default function ShoppingList() {
 
       ids.forEach((id, idx) => {
         const i = nextItems.findIndex((x) => x.id === id);
-        if (i !== -1) nextItems[i] = { ...nextItems[i], order: idx, groupId: gid };
+        if (i !== -1) {nextItems[i] = { ...nextItems[i], order: idx, groupId: gid };}
       });
     });
 
@@ -275,7 +275,7 @@ export default function ShoppingList() {
     const map = new Map<string | null, EinkaufsItem[]>();
     for (const it of items) {
       const key = it.groupId ?? null;
-      if (!map.has(key)) map.set(key, []);
+      if (!map.has(key)) {map.set(key, []);}
       map.get(key)!.push(it);
     }
     Array.from(map.entries()).forEach(([k, arr]) => {
@@ -330,7 +330,7 @@ export default function ShoppingList() {
     const snapshot = JSON.stringify(payload);
 
     // skip identical
-    if (snapshot === lastSavedRef.current) return;
+    if (snapshot === lastSavedRef.current) {return;}
 
     try {
       const res = await fetch('/api/save-shopping-list', {
@@ -355,9 +355,9 @@ export default function ShoppingList() {
   }
 
   function scheduleSave(nextGroups = groups, nextItems = items) {
-    if (!isHydratedRef.current) return; // don't save before first load
+    if (!isHydratedRef.current) {return;} // don't save before first load
 
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    if (saveTimer.current) {window.clearTimeout(saveTimer.current);}
     saveTimer.current = window.setTimeout(() => {
       saveNow(nextGroups, nextItems);
     }, 350);
@@ -366,7 +366,7 @@ export default function ShoppingList() {
   useEffect(() => {
     load();
     return () => {
-      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      if (saveTimer.current) {window.clearTimeout(saveTimer.current);}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -377,7 +377,7 @@ export default function ShoppingList() {
     const name = newName.trim();
     const amount = newAmount.trim();
 
-    if (!name) return;
+    if (!name) {return;}
 
     const next: EinkaufsItem = {
       id: uid(),
@@ -426,7 +426,7 @@ export default function ShoppingList() {
   }
 
   function commitEditItemAmount() {
-    if (!editingAmountItemId) return;
+    if (!editingAmountItemId) {return;}
 
     const nextAmount = editingAmountValue.trim();
     const currentItem = items.find((it) => it.id === editingAmountItemId);
@@ -456,7 +456,7 @@ export default function ShoppingList() {
 
   function createGroup() {
     const name = newGroupName.trim();
-    if (!name) return;
+    if (!name) {return;}
 
     const nextGroup: EinkaufsGruppe = {
       id: uid(),
@@ -477,9 +477,9 @@ export default function ShoppingList() {
   }
 
   function commitEditGroup() {
-    if (!editingGroupId) return;
+    if (!editingGroupId) {return;}
     const name = editingGroupName.trim();
-    if (!name) return;
+    if (!name) {return;}
 
     const nextGroups = groups.map((g) =>
       g.id === editingGroupId ? { ...g, name } : g
@@ -593,7 +593,7 @@ export default function ShoppingList() {
               value={editingGroupName}
               onChange={(e) => setEditingGroupName(e.currentTarget.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') commitEditGroup();
+                if (e.key === 'Enter') {commitEditGroup();}
                 if (e.key === 'Escape') {
                   setEditingGroupId(null);
                   setEditingGroupName('');
@@ -659,7 +659,7 @@ export default function ShoppingList() {
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.currentTarget.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') createGroup();
+              if (e.key === 'Enter') {createGroup();}
             }}
           />
           <Button leftSection={<IconPlus size={16} />} onClick={createGroup}>
@@ -680,7 +680,7 @@ export default function ShoppingList() {
                 onChange={(e) => setNewName(e.currentTarget.value)}
                 style={{ flex: 2 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') addItem();
+                  if (e.key === 'Enter') {addItem();}
                 }}
               />
               <TextInput
@@ -690,7 +690,7 @@ export default function ShoppingList() {
                 onChange={(e) => setNewAmount(e.currentTarget.value)}
                 style={{ flex: 1 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') addItem();
+                  if (e.key === 'Enter') {addItem();}
                 }}
               />
               <Select

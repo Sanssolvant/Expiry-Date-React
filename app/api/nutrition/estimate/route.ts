@@ -31,6 +31,27 @@ type AiNutritionItem = {
   macros: MacroEstimate;
 };
 
+type NutritionResponsePayload = {
+  items: Array<
+    ProductInput & {
+      estimable: boolean;
+      matchedFood: string;
+      estimatedGrams: number | null;
+      confidence: number;
+      reason: string;
+      macros: MacroEstimate;
+    }
+  >;
+  totals: MacroEstimate;
+  coverage: number;
+  estimatedCount: number;
+  unmatchedCount: number;
+};
+
+const MAX_PRODUCTS_PER_REQUEST = 120;
+const REQUEST_CACHE_TTL_MS = 2 * 60 * 1000;
+const nutritionRequestCache = new Map<string, { expiresAt: number; payload: NutritionResponsePayload }>();
+
 const nutritionSchema = {
   type: 'object',
   additionalProperties: false,
@@ -150,7 +171,33 @@ function sumMacros(items: MacroEstimate[]) {
   );
 }
 
-export async function GET() {
+function emptyPayload(): NutritionResponsePayload {
+  return {
+    items: [],
+    totals: { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+    coverage: 0,
+    estimatedCount: 0,
+    unmatchedCount: 0,
+  };
+}
+
+function pruneCache() {
+  const now = Date.now();
+  nutritionRequestCache.forEach((entry, key) => {
+    if (entry.expiresAt <= now) {
+      nutritionRequestCache.delete(key);
+    }
+  });
+  while (nutritionRequestCache.size > 150) {
+    const oldestKey = nutritionRequestCache.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    nutritionRequestCache.delete(oldestKey);
+  }
+}
+
+export async function GET(request: Request) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user?.id) {
@@ -161,10 +208,36 @@ export async function GET() {
       return NextResponse.json({ error: 'OPENAI_API_KEY ist nicht gesetzt.' }, { status: 500 });
     }
 
+    const url = new URL(request.url);
+    const category = url.searchParams.get('category')?.trim() || '';
+    const requestedIds = Array.from(
+      new Set(
+        url.searchParams
+          .getAll('productId')
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      )
+    );
+
+    const where: any = { userId: session.user.id };
+    if (category) {
+      where.kategorie = category;
+    }
+    if (requestedIds.length > 0) {
+      where.id = { in: requestedIds };
+    }
+
     const orderBy: any = [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
     const produkte = await prisma.produkt.findMany({
-      where: { userId: session.user.id },
+      where,
       orderBy,
+      select: {
+        id: true,
+        name: true,
+        menge: true,
+        einheit: true,
+        kategorie: true,
+      },
     });
 
     const products: ProductInput[] = produkte.map((prod) => ({
@@ -176,22 +249,24 @@ export async function GET() {
     }));
 
     if (products.length === 0) {
-      return NextResponse.json({
-        items: [],
-        totals: { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-        coverage: 0,
-        estimatedCount: 0,
-        unmatchedCount: 0,
-      });
+      return NextResponse.json(emptyPayload());
     }
 
-    const inventoryPayload = products.slice(0, 120).map((item) => ({
+    const scopedProducts = products.slice(0, MAX_PRODUCTS_PER_REQUEST);
+    const inventoryPayload = scopedProducts.map((item) => ({
       productId: item.id,
       name: item.name,
       menge: item.menge,
       einheit: item.einheit,
       kategorie: item.kategorie,
     }));
+
+    pruneCache();
+    const cacheKey = `${session.user.id}|${JSON.stringify(inventoryPayload)}`;
+    const cached = nutritionRequestCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.payload);
+    }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -214,22 +289,15 @@ export async function GET() {
             '- Gib für jedes Eingabeprodukt genau einen Eintrag zurück.\n' +
             '- confidence zwischen 0 und 1.\n' +
             '- estimatedGrams = geschätzte essbare Gesamtmenge in Gramm (oder null wenn wirklich unklar).\n' +
-            '- Nur wenn gar keine sinnvolle Ableitung möglich ist: estimable=false und Makros 0.\n\n' +
-            'Erkennungsregeln (wichtig):\n' +
-            '- Entferne Marken-/Zusatzwörter und mappe auf ein Grundlebensmittel.\n' +
+            '- Nur wenn keine sinnvolle Ableitung moeglich ist: estimable=false und Makros 0.\n\n' +
+            'Erkennungsregeln:\n' +
+            '- Entferne Marken-/Zusatzwoerter und mappe auf ein Grundlebensmittel.\n' +
             '- Nutze Singular/Plural und Sprachvarianten robust (de/en).\n' +
-            '- Einfache Standardprodukte sollen fast immer erkannt werden.\n' +
-            '- Beispiele für sichere Basiszuordnung:\n' +
-            '  ei/eier/egg -> Ei\n' +
-            '  milch/milk -> Milch\n' +
-            '  reis/rice, nudeln/pasta, brot/toast, kartoffel/potato,\n' +
-            '  apfel/apple, banane/banana, tomate/tomato, käse/cheese,\n' +
-            '  joghurt/yoghurt, huhn/chicken, thunfisch/tuna, öl/oil, butter, zucker.\n\n' +
+            '- Einfache Standardprodukte sollen meist erkannt werden.\n\n' +
             'Einheiten und Mengen:\n' +
             '- g direkt nutzen, kg = 1000 g.\n' +
             '- ml/l in Gramm über plausible Dichte umrechnen (wenn unklar etwa 1 g/ml).\n' +
-            '- Stk/Packung mit typischen Standardgewichten abschätzen.\n' +
-            '- Ziel ist eine robuste Näherung, nicht absolute Exaktheit.\n\n' +
+            '- Stk/Packung mit typischen Standardgewichten abschätzen.\n\n' +
             `Eingabeprodukte:\n${JSON.stringify(inventoryPayload)}`,
         },
       ],
@@ -261,7 +329,7 @@ export async function GET() {
       aiMap.set(item!.productId, item as AiNutritionItem);
     }
 
-    const items = products.map((product) => {
+    const items = scopedProducts.map((product) => {
       const ai = aiMap.get(product.id);
       if (!ai) {
         return {
@@ -292,23 +360,26 @@ export async function GET() {
     const unmatchedCount = items.length - estimatedCount;
     const coverage = Math.round((estimatedCount / items.length) * 100);
 
-    return NextResponse.json({
+    const payload: NutritionResponsePayload = {
       items,
       totals,
       coverage,
       estimatedCount,
       unmatchedCount,
+    };
+
+    nutritionRequestCache.set(cacheKey, {
+      expiresAt: Date.now() + REQUEST_CACHE_TTL_MS,
+      payload,
     });
+
+    return NextResponse.json(payload);
   } catch (error: any) {
     if (error?.status === 429) {
-      return NextResponse.json(
-        { error: 'OpenAI Kontingent/Quota überschritten.' },
-        { status: 429 }
-      );
+      return NextResponse.json({ error: 'OpenAI Kontingent/Quota überschritten.' }, { status: 429 });
     }
 
     console.error('Fehler bei Nährwert-Schätzung:', error?.message || error);
     return NextResponse.json({ error: 'Serverfehler bei Nährwert-Schätzung' }, { status: 500 });
   }
 }
-

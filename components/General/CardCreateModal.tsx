@@ -134,7 +134,7 @@ export function CardCreateModal({
   });
 
   useEffect(() => {
-    if (!opened) return;
+    if (!opened) {return;}
 
     if (initialData) {
       form.setValues({
@@ -162,7 +162,7 @@ export function CardCreateModal({
     formData.append('file', file);
 
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    if (!res.ok) return null;
+    if (!res.ok) {return null;}
 
     const json = await res.json();
     return json.url || null;
@@ -221,7 +221,7 @@ export function CardCreateModal({
     <Modal
       opened={opened}
       onClose={() => {
-        if (!saving) onClose();
+        if (!saving) {onClose();}
       }}
       centered
       radius="xl"

@@ -62,7 +62,7 @@ export async function POST(req: Request) {
             `Text: "${text}"\n\n` +
             `HEUTIGES DATUM (Europe/Zurich): ${todayStr}\n\n` +
             `DATUM-REGELN:\n` +
-            `- Relative Angaben (z.B. "in zwei Wochen", "morgen", "uebermorgen", "naechsten Freitag") immer in fixes Datum umrechnen.\n` +
+            `- Relative Angaben (z.B. "in zwei Wochen", "morgen", "übermorgen", "nächsten Freitag") immer in fixes Datum umrechnen.\n` +
             `- ablaufdatum IMMER "DD.MM.YYYY" oder null.\n\n` +
             `EINHEIT exakt aus:\n${JSON.stringify(allowedUnits)}\n\n` +
             `KATEGORIE exakt aus:\n${JSON.stringify(allowedCats)}\n\n` +
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     if (err?.status === 429) {
       return Response.json(
-        { error: 'OpenAI Kontingent/Quota ueberschritten. Bitte Billing/Usage pruefen.' },
+        { error: 'OpenAI Kontingent/Quota überschritten. Bitte Billing/Usage prüfen.' },
         { status: 429 }
       );
     }

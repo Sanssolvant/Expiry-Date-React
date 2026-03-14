@@ -31,8 +31,8 @@ type Props = {
 };
 
 function warnBadge(w: WarnLevel) {
-  if (w === WarnLevel.OK) return { color: 'green' as const, text: 'Frisch' };
-  if (w === WarnLevel.BALD) return { color: 'yellow' as const, text: 'Bald' };
+  if (w === WarnLevel.OK) {return { color: 'green' as const, text: 'Frisch' };}
+  if (w === WarnLevel.BALD) {return { color: 'yellow' as const, text: 'Bald' };}
   return { color: 'red' as const, text: 'Abgelaufen' };
 }
 

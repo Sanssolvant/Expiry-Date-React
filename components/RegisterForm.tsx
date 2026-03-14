@@ -69,7 +69,7 @@ export function RegisterForm() {
       return;
     }
 
-    if (form.validate().hasErrors) return;
+    if (form.validate().hasErrors) {return;}
 
     await authClient.signUp.email(
       {

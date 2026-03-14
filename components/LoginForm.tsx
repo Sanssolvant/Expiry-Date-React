@@ -50,7 +50,7 @@ export function LoginForm() {
     validate: {
       identifier: (value) => {
         const v = (value ?? '').trim();
-        if (v.length < 2) return 'Bitte Benutzername oder E-Mail eingeben';
+        if (v.length < 2) {return 'Bitte Benutzername oder E-Mail eingeben';}
 
         if (v.includes('@')) {
           return isEmail('Ungültige E-Mail-Adresse')(v);
@@ -67,7 +67,7 @@ export function LoginForm() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (form.validate().hasErrors) return;
+    if (form.validate().hasErrors) {return;}
     setCustomError(null);
 
     const identifier = form.values.identifier.trim();

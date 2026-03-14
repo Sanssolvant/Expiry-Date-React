@@ -74,7 +74,7 @@ export function ResetPasswordForm() {
       return;
     }
 
-    if (form.validate().hasErrors) return;
+    if (form.validate().hasErrors) {return;}
 
     setLoading(true);
 

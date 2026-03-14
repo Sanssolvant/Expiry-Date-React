@@ -13,7 +13,7 @@ export function FloatingColorSchemeToggle() {
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/reset-password');
 
-  if (!showFloating) return null;
+  if (!showFloating) {return null;}
 
   return (
     <div

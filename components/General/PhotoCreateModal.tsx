@@ -83,7 +83,7 @@ export function PhotoCreateModal({ opened, onClose, onApply }: Props) {
   }, [opened]);
 
   useEffect(() => {
-    if (!file) return;
+    if (!file) {return;}
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
@@ -93,7 +93,7 @@ export function PhotoCreateModal({ opened, onClose, onApply }: Props) {
   const canApply = useMemo(() => items.length > 0 && !loading, [items, loading]);
 
   const analyze = async () => {
-    if (!file) return;
+    if (!file) {return;}
 
     try {
       setLoading(true);
@@ -104,7 +104,7 @@ export function PhotoCreateModal({ opened, onClose, onApply }: Props) {
       const res = await fetch('/api/analyze-products-image', { method: 'POST', body: fd });
       const json = await res.json();
 
-      if (!res.ok) throw new Error(json?.error ?? 'Analyse fehlgeschlagen');
+      if (!res.ok) {throw new Error(json?.error ?? 'Analyse fehlgeschlagen');}
 
       setItems(Array.isArray(json?.items) ? json.items : []);
       setNotes(json?.notes ?? '');

@@ -332,19 +332,19 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       })
       .sort((a, b) => {
         // ✅ Manuell: Reihenfolge bleibt wie in rawCards
-        if (filters.sort === 'manual') return 0;
+        if (filters.sort === 'manual') {return 0;}
 
         const aExp = parseAblauf(a.ablaufdatum);
         const bExp = parseAblauf(b.ablaufdatum);
 
         // expiry_desc: Längst haltbar zuerst
-        if (filters.sort === 'expiry_desc') return bExp - aExp;
+        if (filters.sort === 'expiry_desc') {return bExp - aExp;}
 
         // expiry_asc: Abgelaufen/Bald zuerst (Warnstufe), dann früheres Datum
         const aP = warnPriority[a.warnLevel ?? WarnLevel.OK] ?? 99;
         const bP = warnPriority[b.warnLevel ?? WarnLevel.OK] ?? 99;
 
-        if (aP !== bP) return aP - bP;
+        if (aP !== bP) {return aP - bP;}
         return aExp - bExp;
       });
 
@@ -353,10 +353,10 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
   const handleDragEnd = (event: DragEndEvent) => {
     // DnD nur im manuellen Sortiermodus
-    if (filters.sort !== 'manual') return;
+    if (filters.sort !== 'manual') {return;}
 
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {return;}
 
     const activeId = String(active.id);
     const overId = String(over.id);
@@ -373,7 +373,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
       scheduleAutoSave(
         next,
-        'Neue Reihenfolge wurde lokal gesetzt. Bitte spaeter "Alle speichern" druecken.'
+        'Neue Reihenfolge wurde lokal gesetzt. Bitte später "Alle speichern" drücken.'
       );
 
       return next;
@@ -455,7 +455,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
     scheduleAutoSave(
       nextRawCards,
-      'Bitte Verbindung pruefen oder spaeter "Alle speichern" druecken.'
+      'Bitte Verbindung prüfen oder später "Alle speichern" drücken.'
     );
   };
 
@@ -465,7 +465,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
     scheduleAutoSave(
       nextRawCards,
-      'Loeschen wurde lokal uebernommen. Bitte spaeter "Alle speichern" druecken.'
+      'Löschen wurde lokal übernommen. Bitte später "Alle speichern" drücken.'
     );
   };
 
@@ -529,7 +529,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     }
   };
 
-  if (!mounted) return null;
+  if (!mounted) {return null;}
 
   // ✅ 3-Stage Icon + Tooltip
   const sortModeLabel =
@@ -601,7 +601,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
           setPhotoOpen(false);
 
-          scheduleAutoSave(nextRaw, 'Bitte spaeter "Alle speichern" druecken.');
+          scheduleAutoSave(nextRaw, 'Bitte später "Alle speichern" drücken.');
         }}
       />
 
@@ -975,8 +975,8 @@ type InventoryItemProps = {
 };
 
 function warnBadge(w: WarnLevel) {
-  if (w === WarnLevel.OK) return { color: 'green' as const, text: 'Frisch' };
-  if (w === WarnLevel.BALD) return { color: 'yellow' as const, text: 'Bald' };
+  if (w === WarnLevel.OK) {return { color: 'green' as const, text: 'Frisch' };}
+  if (w === WarnLevel.BALD) {return { color: 'yellow' as const, text: 'Bald' };}
   return { color: 'red' as const, text: 'Abgelaufen' };
 }
 

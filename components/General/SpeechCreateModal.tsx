@@ -115,7 +115,7 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
 
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) {chunksRef.current.push(e.data);}
       };
 
       recorder.start();
@@ -141,7 +141,7 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
       const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
       const json = await res.json();
 
-      if (!res.ok) throw new Error(json?.error ?? 'Transkription fehlgeschlagen');
+      if (!res.ok) {throw new Error(json?.error ?? 'Transkription fehlgeschlagen');}
 
       setText(json.text ?? '');
       setParsed(json.parsed ?? {});
@@ -161,7 +161,7 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
   const stopRecording = async () => {
     const recorder = recorderRef.current;
     const stream = streamRef.current;
-    if (!recorder || !stream) return;
+    if (!recorder || !stream) {return;}
 
     setIsRecording(false);
 
@@ -188,7 +188,7 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
       });
       const json = await res.json();
 
-      if (!res.ok) throw new Error(json?.error ?? 'Auswertung fehlgeschlagen');
+      if (!res.ok) {throw new Error(json?.error ?? 'Auswertung fehlgeschlagen');}
 
       setParsed(json.parsed ?? {});
       notifications.show({ title: 'Aktualisiert', message: 'Neu ausgewertet', color: 'teal' });
