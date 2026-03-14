@@ -155,7 +155,7 @@ export function RegisterForm() {
                 />
               </Box>
 
-              <Group justify="space-between" mt="xs" wrap="nowrap">
+              <Group justify="space-between" mt="xs" wrap="wrap" grow>
                 <Button
                   leftSection={<IconArrowBack size={16} />}
                   variant="default"

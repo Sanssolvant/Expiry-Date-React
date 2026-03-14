@@ -11,12 +11,14 @@ import {
   Group,
   Loader,
   Modal,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
   Title,
   Select,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconEdit, IconPlus, IconTrash } from '@tabler/icons-react';
 
@@ -119,6 +121,7 @@ function uid() {
 }
 
 export default function ShoppingList() {
+  const isSmallScreen = useMediaQuery('(max-width: 48em)') ?? false;
   const [loading, setLoading] = useState(true);
 
   const [groups, setGroups] = useState<EinkaufsGruppe[]>([]);
@@ -515,9 +518,9 @@ export default function ShoppingList() {
     return (
       <Card key={it.id} withBorder radius="md" p="sm">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Group gap="sm" align="flex-start" wrap="nowrap">
+          <Group gap="sm" align="flex-start" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
             <Checkbox checked={it.done} onChange={() => toggleDone(it.id)} mt={2} />
-            <div>
+            <div style={{ minWidth: 0 }}>
               <Text
                 fw={600}
                 style={{
@@ -548,7 +551,7 @@ export default function ShoppingList() {
                   }}
                 />
               ) : (
-                <Group gap={4} wrap="nowrap">
+                <Group gap={4} wrap="wrap">
                   <Text size="sm" c="dimmed">
                     {it.amount?.trim() ? it.amount : 'Keine Menge'}
                   </Text>
@@ -586,8 +589,8 @@ export default function ShoppingList() {
     const isEditing = editingGroupId === g.id;
 
     return (
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap">
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Group gap="sm" wrap="wrap" style={{ flex: 1, minWidth: 0 }}>
           {isEditing ? (
             <TextInput
               value={editingGroupName}
@@ -603,7 +606,7 @@ export default function ShoppingList() {
               placeholder="Gruppenname"
             />
           ) : (
-            <Group gap="sm" wrap="nowrap">
+            <Group gap="sm" wrap="wrap">
               <Title order={4}>{g.name}</Title>
               <Badge variant="light">
                 {(itemsByGroup.get(g.id) ?? []).length}
@@ -671,14 +674,13 @@ export default function ShoppingList() {
       <Stack gap="md">
         {/* Add row */}
         <Card withBorder radius="md" p="md">
-          <Group justify="space-between" align="flex-end">
-            <Group gap="md" align="flex-end" style={{ flex: 1 }}>
+          <Stack gap="md">
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="sm">
               <TextInput
                 label="Lebensmittel"
                 placeholder="z.B. Mehl"
                 value={newName}
                 onChange={(e) => setNewName(e.currentTarget.value)}
-                style={{ flex: 2 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {addItem();}
                 }}
@@ -688,7 +690,6 @@ export default function ShoppingList() {
                 placeholder="z.B. 200g"
                 value={newAmount}
                 onChange={(e) => setNewAmount(e.currentTarget.value)}
-                style={{ flex: 1 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {addItem();}
                 }}
@@ -702,11 +703,10 @@ export default function ShoppingList() {
                 clearable
                 searchable
                 nothingFoundMessage="Keine Gruppen"
-                style={{ flex: 1 }}
               />
-            </Group>
+            </SimpleGrid>
 
-            <Group>
+            <Group grow={isSmallScreen} wrap="wrap">
               <Button
                 variant="light"
                 leftSection={<IconPlus size={16} />}
@@ -719,15 +719,15 @@ export default function ShoppingList() {
                 Hinzufügen
               </Button>
             </Group>
-          </Group>
+          </Stack>
 
           <Divider my="md" />
 
-          <Group justify="space-between">
+          <Group justify="space-between" wrap="wrap" gap="sm">
             <Text c="dimmed" size="sm">
               Ungruppiert: {ungroupedItems.length}
             </Text>
-            <Button variant="subtle" onClick={() => saveNow()}>
+            <Button variant="subtle" onClick={() => saveNow()} fullWidth={isSmallScreen}>
               Jetzt speichern
             </Button>
           </Group>
@@ -778,7 +778,7 @@ export default function ShoppingList() {
                 <DroppableContainer id={containerId}>
                   <Card withBorder radius="md" p="md">
                     <Group justify="space-between" align="center">
-                      <Group gap="sm" wrap="nowrap">
+                      <Group gap="sm" wrap="wrap">
                         <Title order={4}>Ungruppiert</Title>
                         <Badge variant="light">{ungrouped.length}</Badge>
                       </Group>

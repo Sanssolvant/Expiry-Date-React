@@ -23,9 +23,9 @@ export function Dashboard() {
   const openStatistik = () => window.dispatchEvent(new Event('open-inventory-stats'));
 
   return (
-    <AppShell header={{ height: { base: 60, md: 70, lg: 80 } }} padding="md">
+    <AppShell header={{ height: { base: 68, md: 70, lg: 80 } }} padding={{ base: 'xs', sm: 'md' }}>
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+        <Group h="100%" px="sm" justify="space-between" wrap="nowrap">
           <Group gap="sm" align="center" style={{ minWidth: 0 }}>
             <Logo />
             <Text
@@ -41,12 +41,17 @@ export function Dashboard() {
               Dashboard
             </Text>
           </Group>
-          <Group gap="sm">
+          <Group
+            gap="xs"
+            wrap="nowrap"
+            style={{ flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '62%', paddingBottom: 2 }}
+          >
             {isAdmin ? (
               <Badge
                 color="teal"
                 variant="light"
                 leftSection={<IconShieldLock size={12} />}
+                visibleFrom="sm"
               >
                 Admin-Modus aktiv
               </Badge>

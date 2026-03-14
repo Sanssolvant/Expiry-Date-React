@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import {
   IconAdjustmentsHorizontal,
   IconCalendar,
@@ -24,9 +24,7 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
-import { WarnLevel } from '@/app/types';
-import type { Filters } from '@/app/types';
-import type { Dispatch, SetStateAction } from 'react';
+import { WarnLevel, type Filters } from '@/app/types';
 
 type Props = {
   filters: Filters;
@@ -180,7 +178,7 @@ export function CardFilterMenu({ filters, setFilters, categories, units, iconOnl
             <Text fw={700} size="sm" mb="xs">
               Menge
             </Text>
-            <SimpleGrid cols={{ base: 2 }} spacing="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <NumberInput
                 label="Von"
                 min={0}
@@ -212,7 +210,7 @@ export function CardFilterMenu({ filters, setFilters, categories, units, iconOnl
             <Text fw={700} size="sm" mb="xs">
               Ablaufdatum
             </Text>
-            <SimpleGrid cols={{ base: 2 }} spacing="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <DatePickerInput
                 label="Von"
                 valueFormat="DD.MM.YYYY"
@@ -233,7 +231,7 @@ export function CardFilterMenu({ filters, setFilters, categories, units, iconOnl
           </Box>
 
           {/* Footer */}
-          <Group justify="space-between" mt="xs">
+          <Group justify="space-between" mt="xs" wrap="wrap" gap="sm">
             <Button
               variant="default"
               leftSection={<IconEraser size={16} />}
@@ -242,7 +240,7 @@ export function CardFilterMenu({ filters, setFilters, categories, units, iconOnl
               Zurücksetzen
             </Button>
 
-            <Group gap="sm">
+            <Group gap="sm" wrap="wrap">
               <Button variant="default" onClick={() => setOpened(false)}>
                 Abbrechen
               </Button>

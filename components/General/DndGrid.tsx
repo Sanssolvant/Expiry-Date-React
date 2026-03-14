@@ -127,7 +127,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     sort: 'manual',
   });
 
-  const isMobile = useMediaQuery('(max-width: 500px)');
+  const isMobile = useMediaQuery('(max-width: 48em)') ?? false;
 
   const cards = useMemo(() => {
     return rawCards.map((card) => ({
@@ -744,7 +744,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
       {/* Layout */}
       <Box
-        p="md"
+        p={{ base: 'xs', sm: 'md' }}
         style={{
           borderRadius: 8,
           backgroundColor: isDark ? theme.colors.dark[4] : theme.colors.gray[1],
@@ -1120,5 +1120,4 @@ function InventoryCompactItem({
     </Card>
   );
 }
-
 

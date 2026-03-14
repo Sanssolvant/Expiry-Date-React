@@ -536,9 +536,9 @@ export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarP
             {selectedDayCards.length} Produkt{selectedDayCards.length === 1 ? '' : 'e'} an diesem Datum
           </Text>
 
-          <Box mt="md" style={{ height: 420, overflowY: 'auto', paddingRight: 4 }}>
+          <Box mt="md" style={{ maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
             {selectedDayCards.length === 0 ? (
-              <Center h="100%">
+              <Center py="md">
                 <Text c="dimmed" ta="center">
                   Keine Produkte für diesen Tag im aktuellen Filter.
                 </Text>
@@ -559,7 +559,7 @@ export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarP
                         borderLeft: `4px solid ${accent}`,
                       }}
                     >
-                      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+                      <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
                         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
                           <Text fw={600} style={{ wordBreak: 'break-word' }}>
                             {card.name}
@@ -620,7 +620,7 @@ export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarP
                 const badge = warnBadge(card.warnLevel);
                 return (
                   <Paper key={`upcoming-${card.id}`} withBorder radius="md" p="xs">
-                    <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                    <Group justify="space-between" align="center" wrap="wrap" gap="sm">
                       <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
                         <Text fw={600} size="sm" style={{ wordBreak: 'break-word' }}>
                           {card.name}

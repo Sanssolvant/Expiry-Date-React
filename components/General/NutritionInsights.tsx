@@ -336,8 +336,8 @@ export function NutritionInsights({ className }: NutritionInsightsProps) {
               {productsError}
             </Text>
           ) : (
-            <ScrollArea h={320} type="always">
-              <Stack gap={6} pr={4}>
+            <Box style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
+              <Stack gap={6}>
                 {filteredProducts.length === 0 ? (
                   <Text size="sm" c="dimmed">
                     Keine Produkte für diesen Filter.
@@ -353,7 +353,7 @@ export function NutritionInsights({ className }: NutritionInsightsProps) {
                   ))
                 )}
               </Stack>
-            </ScrollArea>
+            </Box>
           )}
         </Paper>
 
@@ -367,8 +367,8 @@ export function NutritionInsights({ className }: NutritionInsightsProps) {
           <Badge color="blue" variant="light" mb="sm">
             Kategorie-Filter: {selectedCategory === 'all' ? 'Alle' : selectedCategory}
           </Badge>
-          <ScrollArea h={320} type="always">
-            <Stack gap={6} pr={4}>
+          <Box style={{ maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
+            <Stack gap={6}>
               {selectedProducts.length === 0 ? (
                 <Text size="sm" c="dimmed">
                   Keine Produkte ausgewählt.
@@ -386,7 +386,7 @@ export function NutritionInsights({ className }: NutritionInsightsProps) {
                 ))
               )}
             </Stack>
-          </ScrollArea>
+          </Box>
         </Paper>
       </SimpleGrid>
 
@@ -487,7 +487,7 @@ export function NutritionInsights({ className }: NutritionInsightsProps) {
                   ) : (
                     estimatedItems.map((item) => (
                       <Paper key={item.id} withBorder p="xs" radius="md">
-                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+                        <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
                           <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
                             <Text fw={600} size="sm" style={{ wordBreak: 'break-word' }}>
                               {item.name}
@@ -541,7 +541,7 @@ export function NutritionInsights({ className }: NutritionInsightsProps) {
                   <Stack gap="xs" pr={4}>
                     {unmatchedItems.map((item) => (
                       <Paper key={`unmatched-${item.id}`} withBorder p="xs" radius="md">
-                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+                        <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
                           <Box style={{ minWidth: 0 }}>
                             <Text fw={600} size="sm" style={{ wordBreak: 'break-word' }}>
                               {item.name}

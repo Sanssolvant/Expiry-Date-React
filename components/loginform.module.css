@@ -1,6 +1,7 @@
 .wrapper {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* Linke Seite */
@@ -177,6 +178,7 @@
     width: 100%;
     border-right: none;
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 20px;
   }
 

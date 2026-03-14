@@ -466,9 +466,9 @@ export function SettingsMenu({
               <Text fw={600} size="xs">
                 Kategorien
               </Text>
-              <Group align="end" gap="xs" wrap="nowrap">
+              <Group align="end" gap="xs" wrap="wrap">
                 <TextInput
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 180 }}
                   placeholder="Kategorie hinzufügen"
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.currentTarget.value)}
@@ -512,9 +512,9 @@ export function SettingsMenu({
               <Text fw={600} size="xs">
                 Einheiten
               </Text>
-              <Group align="end" gap="xs" wrap="nowrap">
+              <Group align="end" gap="xs" wrap="wrap">
                 <TextInput
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 180 }}
                   placeholder="Einheit hinzufügen"
                   value={newUnit}
                   onChange={(e) => setNewUnit(e.currentTarget.value)}

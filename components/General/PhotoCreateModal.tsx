@@ -16,6 +16,7 @@ import {
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconCamera, IconCheck, IconPhoto, IconSparkles, IconWand } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
@@ -65,6 +66,7 @@ export function PhotoCreateModal({ opened, onClose, onApply }: Props) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
+  const isSmallScreen = useMediaQuery('(max-width: 36em)') ?? false;
 
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
@@ -159,13 +161,15 @@ export function PhotoCreateModal({ opened, onClose, onApply }: Props) {
             padding: 12,
           }}
         >
-          <Group justify="space-between" align="center">
-            <Group gap="sm">
+          <Group justify="space-between" align="center" wrap={isSmallScreen ? 'wrap' : 'nowrap'} gap="sm">
+            <Group gap="sm" wrap="nowrap" style={isSmallScreen ? { width: '100%' } : undefined}>
               <Button
                 component="label"
                 leftSection={<IconCamera size={16} />}
                 variant="outline"
                 disabled={loading}
+                size={isSmallScreen ? 'xs' : 'sm'}
+                style={isSmallScreen ? { flex: 1 } : undefined}
               >
                 Foto wählen
                 <input
@@ -182,12 +186,19 @@ export function PhotoCreateModal({ opened, onClose, onApply }: Props) {
                 onClick={analyze}
                 disabled={!canAnalyze}
                 loading={loading}
+                size={isSmallScreen ? 'xs' : 'sm'}
+                style={isSmallScreen ? { flex: 1 } : undefined}
               >
                 Analysieren
               </Button>
             </Group>
 
-            <Badge color={loading ? 'blue' : 'gray'} variant={isDark ? 'filled' : 'light'} radius="sm">
+            <Badge
+              color={loading ? 'blue' : 'gray'}
+              variant={isDark ? 'filled' : 'light'}
+              radius="sm"
+              style={isSmallScreen ? { width: '100%', textAlign: 'center' } : undefined}
+            >
               {loading ? 'Analysiere…' : file ? 'Foto bereit' : 'Kein Foto'}
             </Badge>
           </Group>

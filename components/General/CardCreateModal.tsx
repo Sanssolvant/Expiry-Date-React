@@ -241,11 +241,6 @@ export function CardCreateModal({
               {subtitle}
             </Text>
           </Box>
-          {isEdit && (
-            <Badge ml="auto" variant={isDark ? 'filled' : 'light'} radius="sm">
-              Bearbeiten
-            </Badge>
-          )}
         </Group>
       }
     >
@@ -263,7 +258,7 @@ export function CardCreateModal({
                 required
               />
 
-              <SimpleGrid cols={{ base: 2 }} spacing="sm">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <NumberInput
                   label="Menge"
                   min={1}
@@ -284,7 +279,7 @@ export function CardCreateModal({
 
           {/* Datum */}
           <Section title="Daten" description="Erfasst am & Ablaufdatum">
-            <SimpleGrid cols={{ base: 2 }} spacing="sm">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <DatePickerInput
                 leftSection={<IconCalendar size={18} stroke={1.5} />}
                 leftSectionPointerEvents="none"
@@ -342,7 +337,7 @@ export function CardCreateModal({
           </Section>
 
           {/* Footer */}
-          <Group justify="space-between" mt="xs">
+          <Group justify="space-between" mt="xs" wrap="wrap" gap="sm">
             <Button
               variant="default"
               type="button"
@@ -351,11 +346,9 @@ export function CardCreateModal({
             >
               Abbrechen
             </Button>
-            <Group gap="sm">
-              <Button type="submit" loading={saving}>
-                Speichern
-              </Button>
-            </Group>
+            <Button type="submit" loading={saving}>
+              Speichern
+            </Button>
           </Group>
         </Stack>
       </form>

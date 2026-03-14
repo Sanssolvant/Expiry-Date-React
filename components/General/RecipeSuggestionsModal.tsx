@@ -203,7 +203,7 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
     return (
       <Card key={recipe.title} withBorder radius="md" p="md">
         <Stack gap="sm">
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Group justify="space-between" align="flex-start" wrap="wrap">
             <div>
               <Group gap="xs">
                 <IconToolsKitchen2 size={16} />

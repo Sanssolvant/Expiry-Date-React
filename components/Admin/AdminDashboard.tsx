@@ -230,9 +230,9 @@ export function AdminDashboard({ adminDisplayName }: Props) {
   };
 
   return (
-    <AppShell header={{ height: 70 }} padding="md">
+    <AppShell header={{ height: { base: 68, md: 70 } }} padding={{ base: 'xs', sm: 'md' }}>
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+        <Group h="100%" px="sm" justify="space-between" wrap="nowrap">
           <Group gap="sm" align="center" style={{ minWidth: 0 }}>
             <Logo />
             <Text size="sm" c="dimmed" visibleFrom="md">
@@ -240,8 +240,12 @@ export function AdminDashboard({ adminDisplayName }: Props) {
             </Text>
           </Group>
 
-          <Group gap="sm">
-            <Button component={Link} href="/dashboard" variant="default">
+          <Group
+            gap="xs"
+            wrap="nowrap"
+            style={{ flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '62%', paddingBottom: 2 }}
+          >
+            <Button component={Link} href="/dashboard" variant="default" size="xs">
               Dashboard
             </Button>
             <Button
@@ -249,6 +253,7 @@ export function AdminDashboard({ adminDisplayName }: Props) {
               leftSection={<IconRefresh size={16} />}
               onClick={() => loadOverview(true)}
               loading={refreshing}
+              size="xs"
             >
               Aktualisieren
             </Button>

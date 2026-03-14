@@ -5,6 +5,7 @@ import {
   Accordion,
   Anchor,
   Badge,
+  Box,
   Button,
   Card,
   Center,
@@ -289,7 +290,7 @@ export function RecipeExplorer() {
     return (
       <Card key={`${display.quality}-${recipe.title}`} withBorder radius="md" p="md">
         <Stack gap="sm">
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Group justify="space-between" align="flex-start" wrap="wrap">
             <div>
               <Group gap="xs">
                 <IconToolsKitchen2 size={16} />
@@ -474,8 +475,8 @@ export function RecipeExplorer() {
               {productsError}
             </Text>
           ) : (
-            <ScrollArea h={360} type="always">
-              <Stack gap={6} pr={4}>
+            <Box style={{ maxHeight: 360, overflowY: 'auto', paddingRight: 4 }}>
+              <Stack gap={6}>
                 {filteredProducts.length === 0 ? (
                   <Text size="sm" c="dimmed">
                     Keine Produkte für diesen Suchbegriff.
@@ -491,7 +492,7 @@ export function RecipeExplorer() {
                   ))
                 )}
               </Stack>
-            </ScrollArea>
+            </Box>
           )}
         </Paper>
 

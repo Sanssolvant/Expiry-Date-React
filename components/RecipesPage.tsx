@@ -12,9 +12,9 @@ export function RecipesPage() {
   const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
 
   return (
-    <AppShell header={{ height: { base: 60, md: 70, lg: 80 } }} padding="md">
-      <AppShell.Header px="md">
-        <Group h="100%" justify="space-between">
+    <AppShell header={{ height: { base: 68, md: 70, lg: 80 } }} padding={{ base: 'xs', sm: 'md' }}>
+      <AppShell.Header px="sm">
+        <Group h="100%" justify="space-between" wrap="nowrap">
           <Group gap="sm" align="center" style={{ minWidth: 0 }}>
             <Logo />
             <Text
@@ -31,7 +31,11 @@ export function RecipesPage() {
             </Text>
           </Group>
 
-          <Group gap="sm">
+          <Group
+            gap="xs"
+            wrap="nowrap"
+            style={{ flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '62%', paddingBottom: 2 }}
+          >
             <Tooltip label="Dashboard">
               <ActionIcon
                 component={Link}
