@@ -1,4 +1,5 @@
 import { WarnLevel } from '@/app/types';
+import { parseDateFromString } from '@/app/lib/dateUtils';
 
 /**
  * Berechnet das Warnlevel basierend auf dem Ablaufdatum (im Format DD.MM.YYYY)
@@ -8,8 +9,14 @@ export function calculateWarnLevel(
   baldAb: number = 3,
   abgelaufenSeit: number = 0
 ): WarnLevel {
-  const [day, month, year] = ablaufdatum.split('.');
-  const expiryDate = new Date(`${year}-${month}-${day}T00:00:00`);
+  let expiryDate: Date;
+  try {
+    expiryDate = parseDateFromString(ablaufdatum);
+  } catch {
+    return WarnLevel.OK;
+  }
+
+  expiryDate.setHours(0, 0, 0, 0);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

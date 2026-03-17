@@ -12,6 +12,7 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import { parseDateFromString } from '@/app/lib/dateUtils';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { WarnLevel } from '@/app/types';
 
@@ -36,17 +37,11 @@ const categoryBarColor = 'blue.6';
 const expiryLineColor = 'teal.6';
 
 function parseDisplayDate(value: string): Date | null {
-  const [day, month, year] = value.split('.');
-  if (!day || !month || !year) {
+  try {
+    return parseDateFromString(value);
+  } catch {
     return null;
   }
-
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date;
 }
 
 function keyForMonth(date: Date) {

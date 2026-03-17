@@ -45,6 +45,12 @@ type ExistingProduct = {
   sortOrder: number;
 };
 
+const MAX_NAME_LENGTH = 80;
+const MAX_CATEGORY_LENGTH = 40;
+const MAX_UNIT_LENGTH = 20;
+const MIN_AMOUNT = 1;
+const MAX_AMOUNT = 999999999;
+
 function normalizeImageUrlForUser(value: unknown, userId: string) {
   if (typeof value !== 'string') {
     return '';
@@ -112,18 +118,50 @@ function normalizeCard(card: IncomingCard, index: number, userId: string): Norma
     return null;
   }
 
+  const normalizedName = card.name.trim();
+  if (normalizedName.length > MAX_NAME_LENGTH) {
+    return null;
+  }
+
   const id = typeof card.id === 'string' && card.id.trim().length > 0 ? card.id.trim() : null;
   const mengeRaw = Number(card.menge);
-  const menge = Number.isFinite(mengeRaw) ? mengeRaw : 0;
+  if (!Number.isFinite(mengeRaw) || !Number.isInteger(mengeRaw)) {
+    return null;
+  }
+
+  const menge = Math.trunc(mengeRaw);
+  if (menge < MIN_AMOUNT || menge > MAX_AMOUNT) {
+    return null;
+  }
+
+  const einheit =
+    typeof card.einheit === 'string' && card.einheit.trim() ? card.einheit.trim() : 'Stk';
+  if (einheit.length > MAX_UNIT_LENGTH) {
+    return null;
+  }
+
+  const kategorie = typeof card.kategorie === 'string' ? card.kategorie.trim() : '';
+  if (kategorie.length > MAX_CATEGORY_LENGTH) {
+    return null;
+  }
+
+  let ablaufdatum: Date;
+  let erfasstAm: Date;
+  try {
+    ablaufdatum = formatDateToDb(card.ablaufdatum);
+    erfasstAm = formatDateToDb(card.erfasstAm);
+  } catch {
+    return null;
+  }
 
   return {
     id,
-    name: card.name.trim(),
+    name: normalizedName,
     menge,
-    einheit: typeof card.einheit === 'string' && card.einheit.trim() ? card.einheit.trim() : 'Stk',
-    ablaufdatum: formatDateToDb(card.ablaufdatum),
-    erfasstAm: formatDateToDb(card.erfasstAm),
-    kategorie: typeof card.kategorie === 'string' ? card.kategorie.trim() : '',
+    einheit,
+    ablaufdatum,
+    erfasstAm,
+    kategorie,
     bildUrl: normalizeImageUrlForUser(card.image, userId),
     sortOrder: index,
   };
@@ -190,6 +228,13 @@ export async function POST(req: NextRequest) {
 
     if (normalizedCards.length === 0) {
       return NextResponse.json({ error: 'Keine gueltigen Karten zum Speichern' }, { status: 400 });
+    }
+
+    if (normalizedCards.length !== cards.length) {
+      return NextResponse.json(
+        { error: 'Mindestens eine Karte enthält ungültige Werte (Name, Menge, Datum oder Kategorie).' },
+        { status: 400 }
+      );
     }
 
     const existingById = new Map(existingProducts.map((product) => [product.id, product]));

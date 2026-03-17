@@ -19,7 +19,7 @@ import {
 } from '@mantine/core';
 import { DatePicker } from '@mantine/dates';
 import { useMediaQuery } from '@mantine/hooks';
-import { formatDateToDisplay } from '@/app/lib/dateUtils';
+import { formatDateToDisplay, parseDateFromString } from '@/app/lib/dateUtils';
 import { loadProductsCached } from '@/app/lib/products-client-cache';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
 import { WarnLevel } from '@/app/types';
@@ -65,30 +65,13 @@ function startOfDay(date: Date) {
 }
 
 function parseDisplayDate(value: string): Date | null {
-  const parts = value.split('.');
-  if (parts.length !== 3) {
+  try {
+    const parsed = parseDateFromString(value);
+    parsed.setHours(0, 0, 0, 0);
+    return parsed;
+  } catch {
     return null;
   }
-
-  const day = Number(parts[0]);
-  const month = Number(parts[1]);
-  const year = Number(parts[2]);
-  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) {
-    return null;
-  }
-
-  const parsed = new Date(year, month - 1, day);
-  parsed.setHours(0, 0, 0, 0);
-
-  if (
-    parsed.getFullYear() !== year ||
-    parsed.getMonth() !== month - 1 ||
-    parsed.getDate() !== day
-  ) {
-    return null;
-  }
-
-  return parsed;
 }
 
 function toDayKey(date: Date) {

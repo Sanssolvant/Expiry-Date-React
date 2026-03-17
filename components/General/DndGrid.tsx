@@ -52,7 +52,7 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 
-import { formatDateToDisplay } from '@/app/lib/dateUtils';
+import { formatDateToDisplay, formatDateToStorage, parseDateFromString } from '@/app/lib/dateUtils';
 import { invalidateProductsCache, loadProductsCached } from '@/app/lib/products-client-cache';
 import { USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 import { calculateWarnLevel } from '@/app/lib/warnUtils';
@@ -84,6 +84,7 @@ type DndGridProps = {
 };
 
 type LayoutMode = 'cards' | 'list' | 'compact';
+type SaveSyncStatus = 'synced' | 'pending' | 'error';
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values.map((x) => x.trim()).filter(Boolean)));
@@ -98,6 +99,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
   const [loading, setLoading] = useState(false);
   const [addingToShoppingListIds, setAddingToShoppingListIds] = useState<string[]>([]);
+  const [saveSyncStatus, setSaveSyncStatus] = useState<SaveSyncStatus>('synced');
   const autoSaveTimerRef = useRef<number | null>(null);
   const lastAutoSaveSnapshotRef = useRef('');
 
@@ -144,6 +146,62 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     () => uniqueStrings([...unitOptions, ...cards.map((card) => card.einheit)]),
     [unitOptions, cards]
   );
+
+  const persistInventoryOptions = async (nextCategories: string[], nextUnits: string[]) => {
+    try {
+      await fetch('/api/user-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          inventoryCategories: nextCategories,
+          inventoryUnits: nextUnits,
+        }),
+      });
+    } catch {
+      // non-blocking persistence
+    }
+  };
+
+  const handleAddCategoryOption = (category: string) => {
+    const normalized = category.trim();
+    if (!normalized) {
+      return;
+    }
+
+    const nextCategories = uniqueStrings([...categoryOptions, normalized]);
+    if (nextCategories.length === categoryOptions.length) {
+      return;
+    }
+
+    setCategoryOptions(nextCategories);
+    window.dispatchEvent(
+      new CustomEvent('inventory-options-updated', {
+        detail: { inventoryCategories: nextCategories, inventoryUnits: unitOptions },
+      })
+    );
+    void persistInventoryOptions(nextCategories, unitOptions);
+  };
+
+  const handleAddUnitOption = (unit: string) => {
+    const normalized = unit.trim();
+    if (!normalized) {
+      return;
+    }
+
+    const nextUnits = uniqueStrings([...unitOptions, normalized]);
+    if (nextUnits.length === unitOptions.length) {
+      return;
+    }
+
+    setUnitOptions(nextUnits);
+    window.dispatchEvent(
+      new CustomEvent('inventory-options-updated', {
+        detail: { inventoryCategories: categoryOptions, inventoryUnits: nextUnits },
+      })
+    );
+    void persistInventoryOptions(categoryOptions, nextUnits);
+  };
 
   useEffect(() => setMounted(true), []);
 
@@ -269,6 +327,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             image: prod.bildUrl || '',
           }));
         setRawCards(cardsFromDB);
+        lastAutoSaveSnapshotRef.current = JSON.stringify(cardsFromDB);
+        setSaveSyncStatus('synced');
       } catch (err) {
         console.error('❌ Fehler beim Kartenladen:', err);
       }
@@ -304,7 +364,12 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         const einheitMatch = !filters.einheit || card.einheit === filters.einheit;
         const warnLevelMatch = !filters.warnLevel || card.warnLevel === filters.warnLevel;
 
-        const ablaufDate = new Date(card.ablaufdatum.split('.').reverse().join('-'));
+        let ablaufDate: Date;
+        try {
+          ablaufDate = parseDateFromString(card.ablaufdatum);
+        } catch {
+          return false;
+        }
         const ablaufVonMatch = !filters.ablaufVon || ablaufDate >= filters.ablaufVon;
 
         const ablaufBisMatch =
@@ -336,6 +401,12 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
         const aExp = parseAblauf(a.ablaufdatum);
         const bExp = parseAblauf(b.ablaufdatum);
+        const aDateInvalid = Number.isNaN(aExp);
+        const bDateInvalid = Number.isNaN(bExp);
+
+        if (aDateInvalid && bDateInvalid) {return 0;}
+        if (aDateInvalid) {return 1;}
+        if (bDateInvalid) {return -1;}
 
         // expiry_desc: Längst haltbar zuerst
         if (filters.sort === 'expiry_desc') {return bExp - aExp;}
@@ -371,28 +442,48 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
       const next = arrayMove(prev, oldIndex, newIndex);
 
-      scheduleAutoSave(
-        next,
-        'Neue Reihenfolge wurde lokal gesetzt. Bitte später "Alle speichern" drücken.'
-      );
+      scheduleAutoSave(next);
 
       return next;
     });
   };
 
   const saveCardsToDB = async (cardsToSave: Omit<CardData, 'warnLevel'>[], silent = false) => {
+    setSaveSyncStatus('pending');
+
+    let payload: Omit<CardData, 'warnLevel'>[];
+    try {
+      payload = cardsToSave.map((card) => ({
+        ...card,
+        ablaufdatum: formatDateToStorage(card.ablaufdatum),
+        erfasstAm: formatDateToStorage(card.erfasstAm),
+      }));
+    } catch {
+      setSaveSyncStatus('error');
+      if (!silent) {
+        notifications.show({
+          title: 'Fehler beim Speichern',
+          message: 'Mindestens ein Datum ist ungültig.',
+          color: 'red',
+          icon: <IconX size={18} />,
+        });
+      }
+      throw new Error('invalid date payload');
+    }
+
     const res = await fetch('/api/save-products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ cards: cardsToSave }),
+      body: JSON.stringify({ cards: payload }),
     });
 
     if (!res.ok) {
+      setSaveSyncStatus('error');
       if (!silent) {
         notifications.show({
           title: 'Fehler beim Speichern',
-          message: 'Unbekannter Fehler beim Speichern',
+          message: 'Änderungen konnten nicht mit dem Server synchronisiert werden.',
           color: 'red',
           icon: <IconX size={18} />,
         });
@@ -404,23 +495,23 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       const result = await res.json();
       notifications.show({
         title: 'Gespeichert',
-        message: `${result.count ?? 'Alle'} Karten wurden erfolgreich gespeichert.`,
+        message: `${result.count ?? 'Alle'} Karten wurden erfolgreich synchronisiert.`,
         color: 'teal',
         icon: <IconCheck size={18} />,
       });
     }
+    setSaveSyncStatus('synced');
     invalidateProductsCache();
     return true;
   };
 
-  const scheduleAutoSave = (
-    nextCards: Omit<CardData, 'warnLevel'>[],
-    errorMessage: string
-  ) => {
+  const scheduleAutoSave = (nextCards: Omit<CardData, 'warnLevel'>[]) => {
     const snapshot = JSON.stringify(nextCards);
     if (snapshot === lastAutoSaveSnapshotRef.current) {
       return;
     }
+
+    setSaveSyncStatus('pending');
 
     if (autoSaveTimerRef.current) {
       window.clearTimeout(autoSaveTimerRef.current);
@@ -432,9 +523,10 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           lastAutoSaveSnapshotRef.current = snapshot;
         })
         .catch(() => {
+          setSaveSyncStatus('error');
           notifications.show({
             title: 'Auto-Speichern fehlgeschlagen',
-            message: errorMessage,
+            message: 'Änderungen sind lokal vorhanden, aber nicht synchronisiert.',
             color: 'red',
             icon: <IconX size={18} />,
           });
@@ -453,20 +545,14 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     setRawCards(nextRawCards);
     setEditingCard(null);
 
-    scheduleAutoSave(
-      nextRawCards,
-      'Bitte Verbindung prüfen oder später "Alle speichern" drücken.'
-    );
+    scheduleAutoSave(nextRawCards);
   };
 
   const handleDelete = async (id: string) => {
     const nextRawCards = rawCards.filter((card) => card.id !== id);
     setRawCards(nextRawCards);
 
-    scheduleAutoSave(
-      nextRawCards,
-      'Löschen wurde lokal übernommen. Bitte später "Alle speichern" drücken.'
-    );
+    scheduleAutoSave(nextRawCards);
   };
 
   const handleAddToShoppingList = async (card: CardData) => {
@@ -517,6 +603,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
   const handleSave = async () => {
     setLoading(true);
+    setSaveSyncStatus('pending');
     try {
       if (autoSaveTimerRef.current) {
         window.clearTimeout(autoSaveTimerRef.current);
@@ -524,6 +611,9 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       const payload = cards.map(({ warnLevel, ...rest }) => rest);
       await saveCardsToDB(payload, false);
       lastAutoSaveSnapshotRef.current = JSON.stringify(payload);
+      setSaveSyncStatus('synced');
+    } catch {
+      setSaveSyncStatus('error');
     } finally {
       setLoading(false);
     }
@@ -552,6 +642,14 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const dndDisabled = filters.sort !== 'manual';
   const sortableStrategy =
     layoutMode === 'list' ? verticalListSortingStrategy : rectSortingStrategy;
+  const saveStatusLabel =
+    saveSyncStatus === 'synced'
+      ? 'Synchronisiert'
+      : saveSyncStatus === 'pending'
+        ? 'Synchronisiere...'
+        : 'Nicht synchronisiert';
+  const saveStatusColor =
+    saveSyncStatus === 'synced' ? 'teal' : saveSyncStatus === 'pending' ? 'blue' : 'red';
 
   return (
     <Stack>
@@ -601,7 +699,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
           setPhotoOpen(false);
 
-          scheduleAutoSave(nextRaw, 'Bitte später "Alle speichern" drücken.');
+          scheduleAutoSave(nextRaw);
         }}
       />
 
@@ -615,6 +713,8 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         unitOptions={mergedUnitOptions}
         categoryOptions={mergedCategoryOptions}
         initialData={editingCard}
+        onAddUnitOption={handleAddUnitOption}
+        onAddCategoryOption={handleAddCategoryOption}
       />
 
       <InventoryStatsModal opened={statsOpen} onClose={() => setStatsOpen(false)} cards={cards} />
@@ -684,6 +784,10 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
               </>
             )}
           </Button>
+
+          <Badge color={saveStatusColor} variant={isDark ? 'filled' : 'light'} radius="sm">
+            {saveStatusLabel}
+          </Badge>
 
           <CardFilterMenu
             iconOnly={isMobile}
@@ -1120,4 +1224,5 @@ function InventoryCompactItem({
     </Card>
   );
 }
+
 

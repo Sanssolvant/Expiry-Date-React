@@ -1,4 +1,5 @@
 // app/types/index.ts
+import { parseDateFromString } from '@/app/lib/dateUtils';
 
 export const WarnLevel = {
   OK: 'ok',
@@ -12,8 +13,13 @@ export const warnPriority: Record<string, number> = {
   [WarnLevel.OK]: 2,
 };
 
-export const parseAblauf = (ddmmyyyy: string) =>
-  new Date(ddmmyyyy.split('.').reverse().join('-')).getTime();
+export const parseAblauf = (value: string) => {
+  try {
+    return parseDateFromString(value).getTime();
+  } catch {
+    return Number.NaN;
+  }
+};
 
 export const kategorien = [
   'Obst',
