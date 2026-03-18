@@ -36,6 +36,42 @@ type Props = {
 const categoryBarColor = 'blue.6';
 const expiryLineColor = 'teal.6';
 
+type DonutLabelProps = {
+  x?: number;
+  y?: number;
+  cx?: number;
+  percent?: number;
+};
+
+function renderDonutPercentLabel({ x, y, cx, percent }: DonutLabelProps) {
+  if (
+    typeof x !== 'number' ||
+    typeof y !== 'number' ||
+    typeof cx !== 'number' ||
+    typeof percent !== 'number' ||
+    percent <= 0
+  ) {
+    return null;
+  }
+
+  const value = `${Math.round(percent * 100)}%`;
+  const shiftedX = x > cx ? x - 4 : x + 4;
+
+  return (
+    <text
+      x={shiftedX}
+      y={y}
+      textAnchor="middle"
+      dominantBaseline="central"
+      fill="var(--chart-labels-color, var(--mantine-color-dimmed))"
+      fontFamily="var(--mantine-font-family)"
+      fontSize={12}
+    >
+      {value}
+    </text>
+  );
+}
+
 function parseDisplayDate(value: string): Date | null {
   try {
     return parseDateFromString(value);
@@ -147,6 +183,8 @@ export function InventoryStatsModal({ opened, onClose, cards }: Props) {
     { name: 'Bald', value: stats.statusCounts.bald, color: 'yellow.6' },
     { name: 'Abgelaufen', value: stats.statusCounts.abgelaufen, color: 'red.6' },
   ];
+  const statusChartDataForChart =
+    total > 0 ? statusChartData.filter((item) => item.value > 0) : statusChartData;
 
   return (
     <Modal
@@ -204,10 +242,11 @@ export function InventoryStatsModal({ opened, onClose, cards }: Props) {
             </Text>
             <DonutChart
               h={260}
-              data={statusChartData}
+              data={statusChartDataForChart}
               chartLabel={total}
               withLabels
-              labelsType="percent"
+              withLabelsLine={false}
+              pieProps={{ label: renderDonutPercentLabel }}
               tooltipDataSource="segment"
             />
           </Paper>

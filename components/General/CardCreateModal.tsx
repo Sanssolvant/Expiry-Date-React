@@ -51,6 +51,7 @@ type Props = {
   unitOptions: string[];
   categoryOptions: string[];
   initialData?: CardData | null;
+  barcodeValue?: string | null;
   onAddUnitOption?: (unit: string) => void;
   onAddCategoryOption?: (category: string) => void;
 };
@@ -114,6 +115,7 @@ export function CardCreateModal({
   unitOptions,
   categoryOptions,
   initialData,
+  barcodeValue,
   onAddUnitOption,
   onAddCategoryOption,
 }: Props) {
@@ -431,6 +433,15 @@ export function CardCreateModal({
                 {...form.getInputProps('name')}
                 required
               />
+
+              {barcodeValue ? (
+                <TextInput
+                  label="Barcode"
+                  value={barcodeValue}
+                  readOnly
+                  description="Produktvorlage wird beim Speichern für diesen Barcode aktualisiert."
+                />
+              ) : null}
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <NumberInput

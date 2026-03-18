@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
+  IconBarcode,
   IconCamera,
   IconCheck,
   IconDeviceFloppy,
@@ -65,6 +66,7 @@ import { SpeechCreateModal } from './SpeechCreateModal';
 import { ColorSchemeToggle } from './ColorSchemeToggle';
 import { PhotoCreateModal } from './PhotoCreateModal';
 import { InventoryStatsModal } from './InventoryStatsModal';
+import { BarcodeCreateModal } from './BarcodeCreateModal';
 
 export type CardData = {
   id: string;
@@ -85,6 +87,12 @@ type DndGridProps = {
 
 type LayoutMode = 'cards' | 'list' | 'compact';
 type SaveSyncStatus = 'synced' | 'pending' | 'error';
+type BarcodeTemplateData = {
+  name: string;
+  kategorie: string;
+  image: string;
+  einheit: string;
+};
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values.map((x) => x.trim()).filter(Boolean)));
@@ -95,6 +103,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -108,6 +117,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('cards');
   const [uiSettingsLoaded, setUiSettingsLoaded] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState<string[]>(
@@ -160,6 +170,37 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       });
     } catch {
       // non-blocking persistence
+    }
+  };
+
+  const saveBarcodeTemplate = async (barcode: string, card: Omit<CardData, 'warnLevel'>) => {
+    try {
+      const res = await fetch('/api/barcode-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          barcode,
+          name: card.name,
+          kategorie: card.kategorie,
+          einheit: card.einheit,
+          image: card.image,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || 'Barcode-Vorlage konnte nicht gespeichert werden.');
+      }
+    } catch (error: any) {
+      notifications.show({
+        title: 'Barcode-Vorlage',
+        message:
+          error?.message ||
+          'Karte wurde gespeichert, aber die Barcode-Vorlage konnte nicht aktualisiert werden.',
+        color: 'orange',
+        icon: <IconX size={18} />,
+      });
     }
   };
 
@@ -536,6 +577,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
   const handleCreateCard = async (card: CardData) => {
     const { warnLevel, ...cardWithoutWarn } = card;
+    const barcodeForTemplate = pendingBarcode;
 
     const exists = rawCards.find((c) => c.id === card.id);
     const nextRawCards = exists
@@ -544,6 +586,11 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
     setRawCards(nextRawCards);
     setEditingCard(null);
+    setPendingBarcode(null);
+
+    if (barcodeForTemplate) {
+      void saveBarcodeTemplate(barcodeForTemplate, cardWithoutWarn);
+    }
 
     scheduleAutoSave(nextRawCards);
   };
@@ -597,6 +644,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   };
 
   const handleCardClick = (card: CardData) => {
+    setPendingBarcode(null);
     setEditingCard(card);
     setModalOpen(true);
   };
@@ -657,6 +705,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         opened={speechOpen}
         onClose={() => setSpeechOpen(false)}
         onApply={({ parsed }) => {
+          setPendingBarcode(null);
           const unit = (parsed.einheit ?? 'Stk').trim();
           const cat = (parsed.kategorie ?? '').trim();
 
@@ -680,6 +729,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         opened={photoOpen}
         onClose={() => setPhotoOpen(false)}
         onApply={({ items }) => {
+          setPendingBarcode(null);
           const now = formatDateToDisplay(new Date());
 
           // Multi-create direkt in rawCards speichern (ohne extra Editing)
@@ -703,11 +753,39 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         }}
       />
 
+      <BarcodeCreateModal
+        opened={barcodeOpen}
+        onClose={() => setBarcodeOpen(false)}
+        onApply={({ barcode, template }) => {
+          const cleanedName = (template?.name ?? '').trim();
+          const cleanedCategory = (template?.kategorie ?? '').trim();
+          const cleanedUnit = (template?.einheit ?? 'Stk').trim() || 'Stk';
+          const cleanedImage = (template?.image ?? '').trim();
+          const now = formatDateToDisplay(new Date());
+
+          setPendingBarcode(barcode);
+          setEditingCard({
+            id: crypto.randomUUID(),
+            name: cleanedName,
+            menge: 1,
+            einheit: cleanedUnit,
+            kategorie: cleanedCategory,
+            ablaufdatum: now,
+            erfasstAm: now,
+            image: cleanedImage,
+          });
+
+          setBarcodeOpen(false);
+          setModalOpen(true);
+        }}
+      />
+
       <CardCreateModal
         opened={modalOpen}
         onClose={() => {
           setModalOpen(false);
           setEditingCard(null);
+          setPendingBarcode(null);
         }}
         onCreate={handleCreateCard}
         unitOptions={mergedUnitOptions}
@@ -715,6 +793,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         initialData={editingCard}
         onAddUnitOption={handleAddUnitOption}
         onAddCategoryOption={handleAddCategoryOption}
+        barcodeValue={pendingBarcode}
       />
 
       <InventoryStatsModal opened={statsOpen} onClose={() => setStatsOpen(false)} cards={cards} />
@@ -765,7 +844,22 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             )}
           </Button>
 
-          <Button onClick={() => setModalOpen(true)}>
+          <Button variant="outline" onClick={() => setBarcodeOpen(true)}>
+            {isMobile ? (
+              <IconBarcode size={18} />
+            ) : (
+              <>
+                <IconBarcode size={18} style={{ marginRight: 10 }} /> Per Barcode
+              </>
+            )}
+          </Button>
+
+          <Button
+            onClick={() => {
+              setPendingBarcode(null);
+              setModalOpen(true);
+            }}
+          >
             {isMobile ? (
               <IconPlus size={18} />
             ) : (
@@ -1224,5 +1318,3 @@ function InventoryCompactItem({
     </Card>
   );
 }
-
-

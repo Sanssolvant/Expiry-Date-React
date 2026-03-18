@@ -33,6 +33,7 @@ model User {
 
   shoppingGroups ShoppingGroup[] @relation("UserToShoppingGroup")
   shoppingItems   ShoppingItem[]   @relation("UserToShoppingItem")
+  barcodeTemplates BarcodeTemplate[]
 
   username        String?
   displayUsername String? @db.Text
@@ -173,5 +174,23 @@ model ShoppingItem {
   @@map("shopping_item")
   @@index([userId, order])
   @@index([userId, groupId, order])
+}
+
+model BarcodeTemplate {
+  id         String   @id @default(cuid()) @map("_id")
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  barcode    String
+  name       String
+  kategorie  String
+  bildUrl    String   @default("")
+  einheit    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("barcode_template")
+  @@unique([userId, barcode])
+  @@index([userId, updatedAt])
 }
 

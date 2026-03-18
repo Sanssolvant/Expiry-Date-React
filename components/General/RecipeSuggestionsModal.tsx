@@ -180,8 +180,8 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
 
       const msg =
         failedCount > 0
-          ? `Hinzugefuegt: ${createdCount}, bereits vorhanden: ${alreadyCount}, Fehler: ${failedCount}`
-          : `Hinzugefuegt: ${createdCount}, bereits vorhanden: ${alreadyCount}`;
+          ? `Hinzugefügt: ${createdCount}, bereits vorhanden: ${alreadyCount}, Fehler: ${failedCount}`
+          : `Hinzugefügt: ${createdCount}, bereits vorhanden: ${alreadyCount}`;
 
       notifications.show({
         title: 'Einkaufszettel aktualisiert',
@@ -191,7 +191,7 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
     } catch (e: any) {
       notifications.show({
         title: 'Fehler',
-        message: e?.message || 'Fehlende Zutaten konnten nicht hinzugefuegt werden.',
+        message: e?.message || 'Fehlende Zutaten konnten nicht hinzugefügt werden.',
         color: 'red',
       });
     } finally {
@@ -285,7 +285,7 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
                 <Stack gap={4}>
                   {recipe.steps.length === 0 ? (
                     <Text size="sm" c="dimmed">
-                      Keine Schritte verfuegbar.
+                      Keine Schritte verfügbar.
                     </Text>
                   ) : (
                     recipe.steps.map((step, idx) => (
@@ -360,7 +360,7 @@ export function RecipeSuggestionsModal({ opened, onClose, cards }: Props) {
         {cards.length === 0 ? (
           <Paper withBorder radius="md" p="md">
             <Text c="dimmed" size="sm">
-              Keine Produkte vorhanden. Fuege zuerst Produkte im Dashboard hinzu.
+              Keine Produkte vorhanden. Füge zuerst Produkte im Dashboard hinzu.
             </Text>
           </Paper>
         ) : null}
