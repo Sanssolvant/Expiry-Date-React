@@ -36,9 +36,10 @@
 .imageSide {
   flex: 1;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 56px;
   background:
     radial-gradient(900px 700px at 15% 20%,
@@ -84,7 +85,9 @@
 .heroContent {
   position: relative;
   z-index: 1;
-  max-width: 520px;
+  max-width: 620px;
+  margin-block: auto;
+  padding-right: 8px;
 }
 
 .badge {
@@ -119,23 +122,81 @@
 
 .heroSubtitle {
   margin-top: 12px;
+  max-width: 48ch;
   font-size: 16px;
-  line-height: 1.5;
-  opacity: 0.9;
+  line-height: 1.55;
+  opacity: 0.92;
+  text-wrap: pretty;
+}
+
+.heroChipRow {
+  margin-top: 16px;
+}
+
+.heroChip,
+.heroChipAlt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  animation: chipPulse 3.2s ease-in-out infinite;
+}
+
+.heroChip {
+  background: light-dark(rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.22));
+  border-color: light-dark(rgba(2, 132, 199, 0.32), rgba(125, 211, 252, 0.35));
+}
+
+.heroChipAlt {
+  background: light-dark(rgba(244, 114, 182, 0.2), rgba(244, 114, 182, 0.22));
+  border-color: light-dark(rgba(190, 24, 93, 0.3), rgba(251, 207, 232, 0.25));
+  animation-delay: 300ms;
 }
 
 .heroList {
   margin: 18px 0 0;
-  padding-left: 18px;
+  padding-left: 0;
+  list-style: none;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.heroListItem {
+  display: flex;
+  align-items: flex-start;
   gap: 10px;
-  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: light-dark(rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.03));
+  border: 1px solid light-dark(rgba(15, 23, 42, 0.08), rgba(255, 255, 255, 0.12));
+  font-size: 14px;
+  line-height: 1.35;
+  text-wrap: pretty;
+  animation: revealUp 600ms ease-out both;
+  animation-delay: var(--feature-delay, 0ms);
+}
+
+.heroListIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: light-dark(rgb(3, 105, 161), rgb(125, 211, 252));
+  background: light-dark(rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.2));
 }
 
 .heroCards {
   margin-top: 22px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -146,6 +207,25 @@
   border: 1px solid light-dark(rgba(15, 23, 42, 0.08), rgba(255, 255, 255, 0.12));
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.10);
   backdrop-filter: blur(10px);
+  animation: revealUp 700ms ease-out both;
+  animation-delay: var(--card-delay, 0ms);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.heroCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.14);
+}
+
+.heroCardIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: light-dark(rgb(2, 132, 199), rgb(125, 211, 252));
+  background: light-dark(rgba(125, 211, 252, 0.28), rgba(56, 189, 248, 0.2));
 }
 
 .heroFootnote {
@@ -160,6 +240,10 @@
 @media (max-width: 1100px) {
   .imageSide {
     padding: 40px;
+  }
+
+  .heroList {
+    grid-template-columns: 1fr;
   }
 
   .heroCards {
@@ -184,5 +268,39 @@
 
   .imageSide {
     display: none;
+  }
+}
+
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chipPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroChip,
+  .heroChipAlt,
+  .heroListItem,
+  .heroCard {
+    animation: none;
+  }
+
+  .heroCard {
+    transition: none;
   }
 }

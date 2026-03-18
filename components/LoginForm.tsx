@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Anchor,
@@ -17,7 +17,18 @@ import {
   alpha,
 } from '@mantine/core';
 import { isEmail, useForm } from '@mantine/form';
-import { IconLogin2 } from '@tabler/icons-react';
+import {
+  IconBarcode,
+  IconCalendar,
+  IconChartPie,
+  IconChefHat,
+  IconKey,
+  IconLogin2,
+  IconSettings,
+  IconShoppingCart,
+  IconSparkles,
+  IconWand,
+} from '@tabler/icons-react';
 
 import { authClient } from '@/app/lib/auth-client';
 import { useAuthStatusMessage } from '@/app/lib/useAuthStatusMessage';
@@ -146,6 +157,52 @@ export function LoginForm() {
 
   const surfaceBg = isDark ? alpha(theme.colors.dark[6], 0.55) : alpha(theme.white, 0.7);
   const surfaceBorder = isDark ? alpha(theme.colors.dark[2], 0.35) : theme.colors.gray[3];
+  const featureItems = [
+    {
+      icon: IconBarcode,
+      text: 'Inventar: Produkte manuell, per Sprache, Foto oder Barcode erfassen und verwalten',
+    },
+    {
+      icon: IconCalendar,
+      text: 'Ablaufdaten: Warnstufen für bald fällig und abgelaufen mit smarten Statusanzeigen',
+    },
+    { icon: IconChartPie, text: 'Kalender: Monatsansicht mit nächsten Fälligkeiten und Tagesdetails' },
+    {
+      icon: IconShoppingCart,
+      text: 'Einkaufsliste: Gruppen, Mengen, Abhaken, Drag-and-drop und Direkt-Import aus Produkten',
+    },
+    {
+      icon: IconChefHat,
+      text: 'Rezepte: Auswahlbasierte Suche mit Webquellen und schnellerer, optimierter Verarbeitung',
+    },
+    {
+      icon: IconSparkles,
+      text: 'Nährwertblick: KI-gestützte Schätzung für kcal, Protein, Carbs und Fett',
+    },
+    {
+      icon: IconSettings,
+      text: 'Einstellungen: E-Mail-Erinnerungen, Intervalle, Zeitzone, Kategorien und Einheiten',
+    },
+    { icon: IconKey, text: 'Konto: Login per Benutzername/E-Mail, Passwort-Reset, Profilpflege und Sicherheit' },
+  ];
+
+  const heroCards = [
+    {
+      icon: IconWand,
+      title: 'Inventar Workflow',
+      text: 'Erfassen, sortieren, filtern und speichern - inklusive Barcode-Vorlagen und Bild-Upload.',
+    },
+    {
+      icon: IconSparkles,
+      title: 'Planung mit KI',
+      text: 'Rezepte und Nährwerte greifen direkt auf deinen aktuellen Bestand zu.',
+    },
+    {
+      icon: IconCalendar,
+      title: 'Erinnerungen',
+      text: 'Zeitgesteuerte E-Mail-Reminder helfen dir, weniger zu verschwenden.',
+    },
+  ];
 
   return (
     <div className={classes.wrapper}>
@@ -245,34 +302,65 @@ export function LoginForm() {
           </Title>
 
           <Text className={classes.heroSubtitle}>
-            Behalte Ablaufdaten, Vorräte und deinen Einkauf im Griff: Tracke Lebensmittel, erhalte
-            rechtzeitig Erinnerungen und führe eine Einkaufsliste, die mitdenkt.
+            TrackShelf ist dein zentraler Hub für Vorrat, Ablaufdaten, Einkauf und KI-gestützte
+            Planung.
           </Text>
 
+          <Group gap="xs" className={classes.heroChipRow}>
+            <div className={classes.heroChip}>
+              <IconSparkles size={14} />
+              <span>Live Features</span>
+            </div>
+            <div className={classes.heroChipAlt}>
+              <IconWand size={14} />
+              <span>KI-gestützt</span>
+            </div>
+          </Group>
+
           <ul className={classes.heroList}>
-            <li>⏰ Erinnerungen für bald ablaufende Produkte</li>
-            <li>📦 Vorratsübersicht mit Kategorien &amp; Mindestbestand</li>
-            <li>🛒 Einkaufsliste erstellen, teilen und beim Einkauf abhaken</li>
+            {featureItems.map((item, idx) => {
+              const ItemIcon = item.icon;
+              return (
+                <li
+                  key={item.text}
+                  className={classes.heroListItem}
+                  style={{ '--feature-delay': `${120 + idx * 60}ms` } as CSSProperties}
+                >
+                  <span className={classes.heroListIcon}>
+                    <ItemIcon size={16} stroke={1.8} />
+                  </span>
+                  <span>{item.text}</span>
+                </li>
+              );
+            })}
           </ul>
 
           <div className={classes.heroCards}>
-            <div className={classes.heroCard}>
-              <Text fw={700}>Ablauf-Übersicht</Text>
-              <Text size="sm" c="dimmed">
-                Sieh sofort, was heute, bald oder später abläuft – und plane Mahlzeiten smarter.
-              </Text>
-            </div>
-
-            <div className={classes.heroCard}>
-              <Text fw={700}>Einkaufszettel</Text>
-              <Text size="sm" c="dimmed">
-                Fehlt etwas? Mit einem Tap auf die Liste – perfekt für den nächsten Einkauf.
-              </Text>
-            </div>
+            {heroCards.map((card, idx) => {
+              const CardIcon = card.icon;
+              return (
+                <div
+                  key={card.title}
+                  className={classes.heroCard}
+                  style={{ '--card-delay': `${220 + idx * 90}ms` } as CSSProperties}
+                >
+                  <Group gap={8} align="center" wrap="nowrap">
+                    <span className={classes.heroCardIcon}>
+                      <CardIcon size={16} stroke={1.9} />
+                    </span>
+                    <Text fw={700}>{card.title}</Text>
+                  </Group>
+                  <Text size="sm" c="dimmed">
+                    {card.text}
+                  </Text>
+                </div>
+              );
+            })}
           </div>
 
           <Text className={classes.heroFootnote}>
-            Weniger wegwerfen, besser planen – TrackShelf hilft dir, Food Waste im Alltag zu reduzieren.
+            Alles an einem Ort: Von der Erfassung bis zur Auswertung, damit Planung im Alltag
+            schneller und verlässlicher wird.
           </Text>
 
         </div>
