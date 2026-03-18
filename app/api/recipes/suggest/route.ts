@@ -35,6 +35,25 @@ type RecipeCandidate = {
   steps: RecipeStep[];
 };
 
+type EnrichedRecipe = RecipeCandidate & {
+  availableIngredients: RecipeIngredient[];
+  missingIngredients: RecipeIngredient[];
+  missingCount: number;
+};
+
+type SuggestResponsePayload = {
+  perfectRecipes: EnrichedRecipe[];
+  almostRecipes: EnrichedRecipe[];
+  webSearchUsed: boolean;
+  webSourceCount: number;
+};
+
+const MAX_INVENTORY_ITEMS = 60;
+const TARGET_RECIPE_COUNT = 3;
+const REQUEST_CACHE_TTL_MS = 2 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 150;
+const recipeSuggestCache = new Map<string, { expiresAt: number; payload: SuggestResponsePayload }>();
+
 const preferredRecipeDomains = [
   'chefkoch.de',
   'essen-und-trinken.de',
@@ -108,6 +127,22 @@ const recipeSchema = {
   },
   required: ['recipes'],
 } as const;
+
+function pruneCache() {
+  const now = Date.now();
+  recipeSuggestCache.forEach((entry, key) => {
+    if (entry.expiresAt <= now) {
+      recipeSuggestCache.delete(key);
+    }
+  });
+  while (recipeSuggestCache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = recipeSuggestCache.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    recipeSuggestCache.delete(oldestKey);
+  }
+}
 
 function normalizeText(value: string) {
   return value
@@ -185,6 +220,54 @@ function isIngredientAvailable(ingredient: string, availableNames: string[]) {
   }
 
   return false;
+}
+
+function buildInventoryCacheKey(userId: string, inventory: InventoryInput[]) {
+  const normalized = inventory
+    .map((item) => ({
+      name: normalizeText(item.name),
+      menge:
+        item.menge != null && Number.isFinite(item.menge) ? Number(item.menge.toFixed(3)) : null,
+      einheit: normalizeText(item.einheit ?? ''),
+    }))
+    .filter((item) => item.name.length > 0)
+    .sort((a, b) => {
+      if (a.name !== b.name) {
+        return a.name.localeCompare(b.name);
+      }
+      if (a.einheit !== b.einheit) {
+        return a.einheit.localeCompare(b.einheit);
+      }
+      return (a.menge ?? 0) - (b.menge ?? 0);
+    });
+
+  return `${userId}|${JSON.stringify(normalized)}`;
+}
+
+function uniqueInventoryForPrompt(inventory: InventoryInput[]) {
+  const dedup = new Map<string, InventoryInput>();
+  for (const item of inventory) {
+    const nameKey = normalizeText(item.name);
+    if (!nameKey) {
+      continue;
+    }
+
+    const existing = dedup.get(nameKey);
+    if (!existing) {
+      dedup.set(nameKey, item);
+      continue;
+    }
+
+    const existingAmount = Number.isFinite(Number(existing.menge)) ? Number(existing.menge) : -1;
+    const nextAmount = Number.isFinite(Number(item.menge)) ? Number(item.menge) : -1;
+    if (nextAmount > existingAmount) {
+      dedup.set(nameKey, item);
+    }
+  }
+
+  return Array.from(dedup.values())
+    .sort((a, b) => normalizeText(a.name).localeCompare(normalizeText(b.name)))
+    .slice(0, MAX_INVENTORY_ITEMS);
 }
 
 function getHostFromUrl(value: string) {
@@ -381,7 +464,7 @@ export async function POST(req: NextRequest) {
         einheit: typeof item?.einheit === 'string' ? item.einheit.trim() : undefined,
       }))
       .filter((item: InventoryInput) => item.name.length > 0)
-      .slice(0, 120);
+      .slice(0, MAX_INVENTORY_ITEMS * 2);
 
     if (inventory.length === 0) {
       return NextResponse.json({
@@ -392,7 +475,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const inventoryLines = inventory.map((item) => {
+    const scopedInventory = uniqueInventoryForPrompt(inventory);
+    const cacheKey = buildInventoryCacheKey(session.user.id, scopedInventory);
+
+    pruneCache();
+    const cached = recipeSuggestCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.payload);
+    }
+
+    const inventoryLines = scopedInventory.map((item) => {
       const amountPart =
         item.menge != null ? ` (${item.menge}${item.einheit ? ` ${item.einheit}` : ''})` : '';
       return `- ${item.name}${amountPart}`;
@@ -402,17 +494,17 @@ export async function POST(req: NextRequest) {
       'Du bist ein sehr strenger Kochassistent. Antworte nur als valides JSON gemäss Schema.';
 
     const userPrompt =
-      `Aufgabe: Erzeuge Rezeptvorschläge fuer diesen Vorrat:\n${inventoryLines.join('\n')}\n\n` +
+      `Aufgabe: Erzeuge Rezeptvorschläge für diesen Vorrat:\n${inventoryLines.join('\n')}\n\n` +
       `Absolute Regeln:\n` +
       `1) Nutze aktiv Websuche und liefere NUR bekannte Standardrezepte mit echter Quelle.\n` +
       `2) Pro Rezept MUSS sourceTitle + sourceUrl auf ein echtes Rezept verweisen.\n` +
       `3) KEINE unplausiblen Mischungen (z.B. Banane + Tomate im selben Gericht).\n` +
       `4) Triff KEINE Vorrats-Annahmen. Grundzutaten (Mehl, Zucker, Eier, Öl, Backpulver ...) immer explizit auffuehren.\n` +
-      `5) Schritte muessen detailliert sein: konkrete Mengen, Zeit, ggf. Temperatur.\n` +
-      `6) Zutaten und Mengen metrisch und realistisch fuer Haushalt in DACH.\n` +
+      `5) Schritte müssen detailliert sein: konkrete Mengen, Zeit, ggf. Temperatur.\n` +
+      `6) Zutaten und Mengen metrisch und realistisch für Haushalt in DACH.\n` +
       `7) Keine Fantasiegerichte, keine erfundenen Quellen.\n\n` +
       `Ausgabe-Regeln:\n` +
-      `- 10 Rezepte liefern.\n` +
+      `- ${TARGET_RECIPE_COUNT} Rezepte liefern.\n` +
       `- dishType nur "sweet" oder "savory".\n` +
       `- ingredients: name + amount + optional.\n` +
       `- steps: title + detail + ingredientAmounts (Liste der in diesem Schritt verwendeten Mengenangaben).\n` +
@@ -421,7 +513,7 @@ export async function POST(req: NextRequest) {
     const requestBase: any = {
       model: 'gpt-5.2',
       temperature: 0.1,
-      max_output_tokens: 6000,
+      max_output_tokens: 3200,
       input: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -451,7 +543,7 @@ export async function POST(req: NextRequest) {
             filters: {
               allowed_domains: preferredRecipeDomains,
             },
-            search_context_size: 'high',
+            search_context_size: 'medium',
             user_location: {
               type: 'approximate',
               country: 'CH',
@@ -498,7 +590,7 @@ export async function POST(req: NextRequest) {
       candidates = sanitizeRecipes(parsed, new Set<string>(), false).slice(0, 20);
     }
 
-    const availableNames = inventory.map((item: InventoryInput) => item.name);
+    const availableNames = scopedInventory.map((item: InventoryInput) => item.name);
 
     const enriched = candidates.map((recipe: RecipeCandidate) => {
       const availableIngredients: RecipeIngredient[] = [];
@@ -542,12 +634,19 @@ export async function POST(req: NextRequest) {
         .slice(0, 8);
     }
 
-    return NextResponse.json({
+    const payload: SuggestResponsePayload = {
       perfectRecipes,
       almostRecipes,
       webSearchUsed,
       webSourceCount: webSourceHosts.size,
+    };
+
+    recipeSuggestCache.set(cacheKey, {
+      expiresAt: Date.now() + REQUEST_CACHE_TTL_MS,
+      payload,
     });
+
+    return NextResponse.json(payload);
   } catch (error: any) {
     if (error?.status === 429) {
       return NextResponse.json(
