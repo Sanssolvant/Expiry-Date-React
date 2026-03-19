@@ -10,9 +10,11 @@ import {
   Group,
   Modal,
   NumberInput,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
+  Tabs,
   Text,
   TextInput,
   ThemeIcon,
@@ -44,16 +46,27 @@ type CardData = {
   kategorie: string;
 };
 
+type CreateMode = 'single' | 'batch';
+type BatchEntry = {
+  key: string;
+  menge: number;
+  einheit: string;
+  ablaufdatum: Date | null;
+  erfasstAm: Date | null;
+};
+
 type Props = {
   opened: boolean;
   onClose: () => void;
-  onCreate: (card: CardData) => void;
+  onCreate: (card: CardData) => void | Promise<void>;
+  onCreateMany?: (cards: CardData[]) => void | Promise<void>;
   unitOptions: string[];
   categoryOptions: string[];
   initialData?: CardData | null;
   barcodeValue?: string | null;
   onAddUnitOption?: (unit: string) => void;
   onAddCategoryOption?: (category: string) => void;
+  preferredCreateMode?: CreateMode;
 };
 
 const CREATE_OPTION_PREFIX = '__create__:';
@@ -112,12 +125,14 @@ export function CardCreateModal({
   opened,
   onClose,
   onCreate,
+  onCreateMany,
   unitOptions,
   categoryOptions,
   initialData,
   barcodeValue,
   onAddUnitOption,
   onAddCategoryOption,
+  preferredCreateMode,
 }: Props) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
@@ -132,6 +147,9 @@ export function CardCreateModal({
   const [categorySearch, setCategorySearch] = useState('');
   const [extraUnitOptions, setExtraUnitOptions] = useState<string[]>([]);
   const [extraCategoryOptions, setExtraCategoryOptions] = useState<string[]>([]);
+  const [createMode, setCreateMode] = useState<CreateMode>('single');
+  const [batchEntries, setBatchEntries] = useState<BatchEntry[]>([]);
+  const [activeBatchKey, setActiveBatchKey] = useState<string | null>(null);
 
   const isEdit = Boolean(initialData);
   const mergedUnitOptions = useMemo(
@@ -142,6 +160,15 @@ export function CardCreateModal({
     () => uniqueStrings([...categoryOptions, ...extraCategoryOptions, initialData?.kategorie ?? '']),
     [categoryOptions, extraCategoryOptions, initialData?.kategorie]
   );
+  const buildBatchEntry = (
+    overrides?: Partial<Pick<BatchEntry, 'menge' | 'einheit' | 'ablaufdatum' | 'erfasstAm'>>
+  ): BatchEntry => ({
+    key: uuidv4(),
+    menge: overrides?.menge ?? 1,
+    einheit: overrides?.einheit?.trim() || mergedUnitOptions[0] || 'Stk',
+    ablaufdatum: overrides?.ablaufdatum ?? new Date(),
+    erfasstAm: overrides?.erfasstAm ?? new Date(),
+  });
 
   const form = useForm({
     initialValues: {
@@ -165,6 +192,9 @@ export function CardCreateModal({
         return null;
       },
       menge: (value) => {
+        if (!isEdit && createMode === 'batch') {
+          return null;
+        }
         if (!Number.isFinite(value) || value < 1) {
           return 'Bitte eine Menge grösser oder gleich 1 eingeben.';
         }
@@ -173,10 +203,25 @@ export function CardCreateModal({
         }
         return null;
       },
-      einheit: (value) => (!value?.trim() ? 'Bitte eine Einheit auswählen.' : null),
+      einheit: (value) => {
+        if (!isEdit && createMode === 'batch') {
+          return null;
+        }
+        return !value?.trim() ? 'Bitte eine Einheit auswählen.' : null;
+      },
       kategorie: (value) => (!value?.trim() ? 'Bitte eine Kategorie auswählen.' : null),
-      erfasstAm: (value) => (!value ? 'Bitte ein Erfassungsdatum auswählen.' : null),
-      ablaufdatum: (value) => (!value ? 'Bitte ein Ablaufdatum auswählen.' : null),
+      erfasstAm: (value) => {
+        if (!isEdit && createMode === 'batch') {
+          return null;
+        }
+        return !value ? 'Bitte ein Erfassungsdatum auswählen.' : null;
+      },
+      ablaufdatum: (value) => {
+        if (!isEdit && createMode === 'batch') {
+          return null;
+        }
+        return !value ? 'Bitte ein Ablaufdatum auswählen.' : null;
+      },
     },
   });
 
@@ -215,16 +260,30 @@ export function CardCreateModal({
         kategorie: initialData.kategorie,
         image: null,
       });
+      setCreateMode('single');
+      setBatchEntries([]);
+      setActiveBatchKey(null);
       setFile(null);
     } else {
+      const initialMode = preferredCreateMode === 'batch' ? 'batch' : 'single';
+      const defaultEinheit = mergedUnitOptions[0] || 'Stk';
+      const defaultKategorie = mergedCategoryOptions[0] || '';
+      const defaultEntry = buildBatchEntry({ einheit: defaultEinheit });
+
       form.reset();
       form.setValues({
-        einheit: mergedUnitOptions[0] || 'Stk',
-        kategorie: mergedCategoryOptions[0] || '',
+        menge: defaultEntry.menge,
+        einheit: defaultEinheit,
+        ablaufdatum: defaultEntry.ablaufdatum,
+        erfasstAm: defaultEntry.erfasstAm,
+        kategorie: defaultKategorie,
       });
+      setCreateMode(initialMode);
+      setBatchEntries([defaultEntry]);
+      setActiveBatchKey(defaultEntry.key);
       setFile(null);
     }
-  }, [opened, initialData, mergedUnitOptions, mergedCategoryOptions]);
+  }, [opened, initialData, preferredCreateMode]);
 
   useEffect(() => {
     if (!file) {
@@ -268,7 +327,7 @@ export function CardCreateModal({
   const title = isEdit ? 'Karte bearbeiten' : 'Neue Karte erstellen';
   const subtitle = isEdit
     ? 'Passe die Angaben an und speichere die Änderungen.'
-    : 'Fülle die Felder aus - ein Bild ist optional.';
+    : 'Du kannst ein einzelnes Produkt oder mehrere Chargen erfassen.';
 
   const headerBg = useMemo(
     () => (isDark ? alpha(theme.colors.dark[6], 0.55) : alpha(theme.white, 0.75)),
@@ -336,18 +395,88 @@ export function CardCreateModal({
     setCategorySearch('');
   };
 
+  const handleCreateModeChange = (value: string) => {
+    const nextMode = value === 'batch' ? 'batch' : 'single';
+    if (nextMode === createMode) {
+      return;
+    }
+
+    if (nextMode === 'batch') {
+      if (batchEntries.length === 0) {
+        const starterEntry = buildBatchEntry({
+          menge: Number.isFinite(form.values.menge) ? form.values.menge : 1,
+          einheit: form.values.einheit,
+          erfasstAm: form.values.erfasstAm,
+          ablaufdatum: form.values.ablaufdatum,
+        });
+        setBatchEntries([starterEntry]);
+        setActiveBatchKey(starterEntry.key);
+      } else if (!activeBatchKey) {
+        setActiveBatchKey(batchEntries[0]?.key ?? null);
+      }
+    } else {
+      const fallbackEntry =
+        batchEntries.find((entry) => entry.key === activeBatchKey) ??
+        batchEntries[0] ??
+        buildBatchEntry({ einheit: mergedUnitOptions[0] || 'Stk' });
+      form.setValues({
+        menge: fallbackEntry.menge,
+        einheit: fallbackEntry.einheit,
+        erfasstAm: fallbackEntry.erfasstAm,
+        ablaufdatum: fallbackEntry.ablaufdatum,
+      });
+    }
+
+    setCreateMode(nextMode);
+  };
+
+  const addBatchEntry = () => {
+    const activeEntry =
+      batchEntries.find((entry) => entry.key === activeBatchKey) ?? batchEntries[batchEntries.length - 1];
+    const nextEntry = buildBatchEntry(
+      activeEntry
+        ? {
+            menge: activeEntry.menge,
+            einheit: activeEntry.einheit,
+            erfasstAm: activeEntry.erfasstAm,
+            ablaufdatum: activeEntry.ablaufdatum,
+          }
+        : undefined
+    );
+    setBatchEntries((prev) => [...prev, nextEntry]);
+    setActiveBatchKey(nextEntry.key);
+  };
+
+  const updateBatchEntry = (key: string, patch: Partial<Omit<BatchEntry, 'key'>>) => {
+    setBatchEntries((prev) =>
+      prev.map((entry) => {
+        if (entry.key !== key) {
+          return entry;
+        }
+        return { ...entry, ...patch };
+      })
+    );
+  };
+
+  const removeBatchEntry = (key: string) => {
+    setBatchEntries((prev) => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+
+      const next = prev.filter((entry) => entry.key !== key);
+      if (activeBatchKey === key) {
+        setActiveBatchKey(next[0]?.key ?? null);
+      }
+      return next;
+    });
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
     setSaving(true);
     setUploadError(null);
 
     try {
-      if (!values.ablaufdatum || !values.erfasstAm) {
-        return;
-      }
-
-      const ablaufdatumStr = formatDateToDisplay(values.ablaufdatum);
-      const erfasstAmStr = formatDateToDisplay(values.erfasstAm);
-
       let imageUrl = removeExistingImage ? '' : initialData?.image || '';
 
       if (file) {
@@ -366,20 +495,92 @@ export function CardCreateModal({
         imageUrl = uploaded.url;
       }
 
-      const newCard: CardData = {
-        id: initialData?.id || uuidv4(),
-        name: values.name.trim(),
-        menge: values.menge,
-        einheit: values.einheit.trim(),
-        ablaufdatum: ablaufdatumStr,
-        erfasstAm: erfasstAmStr,
-        kategorie: values.kategorie.trim(),
-        image: imageUrl,
-      };
+      if (!isEdit && createMode === 'batch') {
+        if (batchEntries.length === 0) {
+          notifications.show({
+            title: 'Keine Chargen',
+            message: 'Bitte mindestens eine Charge erfassen.',
+            color: 'red',
+          });
+          return;
+        }
 
-      await onCreate(newCard);
+        const normalizedName = values.name.trim();
+        const normalizedCategory = values.kategorie.trim();
+        const cardsToCreate: CardData[] = [];
+
+        for (let index = 0; index < batchEntries.length; index += 1) {
+          const entry = batchEntries[index];
+          if (!Number.isFinite(entry.menge) || entry.menge < 1 || !Number.isInteger(entry.menge)) {
+            notifications.show({
+              title: `Charge ${index + 1}`,
+              message: 'Bitte eine gültige ganze Zahl als Menge eingeben.',
+              color: 'red',
+            });
+            return;
+          }
+          if (!entry.einheit.trim()) {
+            notifications.show({
+              title: `Charge ${index + 1}`,
+              message: 'Bitte eine Einheit auswählen.',
+              color: 'red',
+            });
+            return;
+          }
+          if (!entry.erfasstAm || !entry.ablaufdatum) {
+            notifications.show({
+              title: `Charge ${index + 1}`,
+              message: 'Bitte Erfasst am und Ablaufdatum setzen.',
+              color: 'red',
+            });
+            return;
+          }
+
+          cardsToCreate.push({
+            id: uuidv4(),
+            name: normalizedName,
+            menge: entry.menge,
+            einheit: entry.einheit.trim(),
+            ablaufdatum: formatDateToDisplay(entry.ablaufdatum),
+            erfasstAm: formatDateToDisplay(entry.erfasstAm),
+            kategorie: normalizedCategory,
+            image: imageUrl,
+          });
+        }
+
+        if (onCreateMany) {
+          await onCreateMany(cardsToCreate);
+        } else {
+          for (const card of cardsToCreate) {
+            await onCreate(card);
+          }
+        }
+      } else {
+        if (!values.ablaufdatum || !values.erfasstAm) {
+          return;
+        }
+
+        const ablaufdatumStr = formatDateToDisplay(values.ablaufdatum);
+        const erfasstAmStr = formatDateToDisplay(values.erfasstAm);
+
+        const newCard: CardData = {
+          id: initialData?.id || uuidv4(),
+          name: values.name.trim(),
+          menge: values.menge,
+          einheit: values.einheit.trim(),
+          ablaufdatum: ablaufdatumStr,
+          erfasstAm: erfasstAmStr,
+          kategorie: values.kategorie.trim(),
+          image: imageUrl,
+        };
+
+        await onCreate(newCard);
+      }
+
       form.reset();
       setFile(null);
+      setBatchEntries([]);
+      setActiveBatchKey(null);
       onClose();
     } catch (error: any) {
       notifications.show({
@@ -423,7 +624,14 @@ export function CardCreateModal({
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          <Section title="Produkt" description="Name, Menge und Einheit">
+          <Section
+            title="Produkt"
+            description={
+              createMode === 'batch' && !isEdit
+                ? 'Name und Kategorie gelten für alle Chargen.'
+                : 'Name, Menge und Einheit'
+            }
+          >
             <Stack gap="sm">
               <TextInput
                 leftSection={<IconLabel size={18} stroke={1.5} />}
@@ -443,7 +651,19 @@ export function CardCreateModal({
                 />
               ) : null}
 
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+              {!isEdit ? (
+                <SegmentedControl
+                  value={createMode}
+                  onChange={handleCreateModeChange}
+                  data={[
+                    { label: 'Einzeln', value: 'single' },
+                    { label: 'Mehrere Chargen', value: 'batch' },
+                  ]}
+                />
+              ) : null}
+
+              {(isEdit || createMode === 'single') && (
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                 <NumberInput
                   label="Menge"
                   min={1}
@@ -475,28 +695,137 @@ export function CardCreateModal({
                   }}
                   error={form.errors.einheit}
                 />
-              </SimpleGrid>
+                </SimpleGrid>
+              )}
             </Stack>
           </Section>
 
-          <Section title="Daten" description="Erfasst am und Ablaufdatum">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-              <DatePickerInput
-                leftSection={<IconCalendar size={18} stroke={1.5} />}
-                leftSectionPointerEvents="none"
-                label="Erfasst am"
-                valueFormat="DD.MM.YYYY"
-                {...form.getInputProps('erfasstAm')}
-              />
-              <DatePickerInput
-                leftSection={<IconCalendar size={18} stroke={1.5} />}
-                leftSectionPointerEvents="none"
-                label="Ablaufdatum"
-                valueFormat="DD.MM.YYYY"
-                {...form.getInputProps('ablaufdatum')}
-              />
-            </SimpleGrid>
-          </Section>
+          {(isEdit || createMode === 'single') && (
+            <Section title="Daten" description="Erfasst am und Ablaufdatum">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                <DatePickerInput
+                  leftSection={<IconCalendar size={18} stroke={1.5} />}
+                  leftSectionPointerEvents="none"
+                  label="Erfasst am"
+                  valueFormat="DD.MM.YYYY"
+                  {...form.getInputProps('erfasstAm')}
+                />
+                <DatePickerInput
+                  leftSection={<IconCalendar size={18} stroke={1.5} />}
+                  leftSectionPointerEvents="none"
+                  label="Ablaufdatum"
+                  valueFormat="DD.MM.YYYY"
+                  {...form.getInputProps('ablaufdatum')}
+                />
+              </SimpleGrid>
+            </Section>
+          )}
+
+          {!isEdit && createMode === 'batch' ? (
+            <Section title="Chargen" description="Erfasse jede Charge mit eigenen Daten in einer Lasche.">
+              <Stack gap="sm">
+                <Group justify="space-between" wrap="wrap" gap="xs">
+                  <Text size="xs" c="dimmed">
+                    {batchEntries.length} Charge{batchEntries.length === 1 ? '' : 'n'}
+                  </Text>
+                  <Button
+                    type="button"
+                    variant="light"
+                    size="xs"
+                    leftSection={<IconPlus size={14} />}
+                    onClick={addBatchEntry}
+                  >
+                    Charge hinzufügen
+                  </Button>
+                </Group>
+
+                <Tabs
+                  value={activeBatchKey}
+                  onChange={(value) => setActiveBatchKey(value)}
+                  variant="outline"
+                  radius="md"
+                >
+                  <Tabs.List>
+                    {batchEntries.map((entry, index) => (
+                      <Tabs.Tab key={entry.key} value={entry.key}>
+                        Charge {index + 1}
+                      </Tabs.Tab>
+                    ))}
+                  </Tabs.List>
+
+                  {batchEntries.map((entry, index) => (
+                    <Tabs.Panel key={entry.key} value={entry.key} pt="sm">
+                      <Stack gap="sm">
+                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                          <NumberInput
+                            label="Menge"
+                            min={1}
+                            max={999999999}
+                            allowDecimal={false}
+                            hideControls
+                            value={entry.menge}
+                            onChange={(nextValue) =>
+                              updateBatchEntry(entry.key, {
+                                menge: Number.isFinite(nextValue) ? Number(nextValue) : 1,
+                              })
+                            }
+                          />
+                          <Select
+                            label="Einheit"
+                            allowDeselect={false}
+                            data={mergedUnitOptions.map((option) => ({ value: option, label: option }))}
+                            value={entry.einheit}
+                            onChange={(value) => {
+                              if (!value) {
+                                return;
+                              }
+                              updateBatchEntry(entry.key, { einheit: value });
+                            }}
+                          />
+                        </SimpleGrid>
+
+                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                          <DatePickerInput
+                            leftSection={<IconCalendar size={18} stroke={1.5} />}
+                            leftSectionPointerEvents="none"
+                            label="Erfasst am"
+                            valueFormat="DD.MM.YYYY"
+                            value={entry.erfasstAm}
+                            onChange={(value) => updateBatchEntry(entry.key, { erfasstAm: value })}
+                          />
+                          <DatePickerInput
+                            leftSection={<IconCalendar size={18} stroke={1.5} />}
+                            leftSectionPointerEvents="none"
+                            label="Ablaufdatum"
+                            valueFormat="DD.MM.YYYY"
+                            value={entry.ablaufdatum}
+                            onChange={(value) => updateBatchEntry(entry.key, { ablaufdatum: value })}
+                          />
+                        </SimpleGrid>
+
+                        <Group justify="space-between" wrap="wrap" gap="xs">
+                          <Text size="xs" c="dimmed">
+                            Lasche {index + 1} von {batchEntries.length}
+                          </Text>
+                          <Button
+                            type="button"
+                            color="red"
+                            variant="outline"
+                            size="xs"
+                            leftSection={<IconTrash size={14} />}
+                            disabled={batchEntries.length <= 1}
+                            onClick={() => removeBatchEntry(entry.key)}
+                          >
+                            Charge entfernen
+                          </Button>
+                        </Group>
+                      </Stack>
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </Stack>
+            </Section>
+          ) : null}
 
           <Section title="Kategorie" description="Hilft beim Filtern und Sortieren">
             <Select
@@ -608,7 +937,7 @@ export function CardCreateModal({
               Abbrechen
             </Button>
             <Button type="submit" loading={saving}>
-              Speichern
+              {!isEdit && createMode === 'batch' ? 'Alle Chargen speichern' : 'Speichern'}
             </Button>
           </Group>
         </Stack>

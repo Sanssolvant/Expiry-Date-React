@@ -18,7 +18,14 @@ import { useAdminAccess } from '@/app/lib/use-admin-access';
 
 
 export function Dashboard() {
-  const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
+  const {
+    warnBaldAb,
+    warnAbgelaufenAb,
+    calendarUpcomingDays,
+    setWarnBaldAb,
+    setWarnAbgelaufenAb,
+    setCalendarUpcomingDays,
+  } = useWarnSettings();
   const { canAccess: isAdmin } = useAdminAccess();
   const openStatistik = () => window.dispatchEvent(new Event('open-inventory-stats'));
 
@@ -108,8 +115,10 @@ export function Dashboard() {
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}
+              calendarUpcomingDays={calendarUpcomingDays}
               setBaldAb={setWarnBaldAb}
               setAbgelaufenAb={setWarnAbgelaufenAb}
+              setCalendarUpcomingDays={setCalendarUpcomingDays}
             />
           </Group>
         </Group>

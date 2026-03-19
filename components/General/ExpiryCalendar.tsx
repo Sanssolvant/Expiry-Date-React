@@ -27,6 +27,7 @@ import { WarnLevel } from '@/app/types';
 type ExpiryCalendarProps = {
   warnBaldAb: number;
   warnAbgelaufenAb: number;
+  calendarUpcomingDays: number;
 };
 
 type StoredCard = {
@@ -127,7 +128,11 @@ function formatLongDate(value: Date | null) {
   }).format(value);
 }
 
-export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarProps) {
+export function ExpiryCalendar({
+  warnBaldAb,
+  warnAbgelaufenAb,
+  calendarUpcomingDays,
+}: ExpiryCalendarProps) {
   const theme = useMantineTheme();
   const { colorScheme } = useMantineColorScheme();
   const isDark = colorScheme === 'dark';
@@ -300,8 +305,9 @@ export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarP
   }, [cards]);
 
   const upcomingCards = useMemo(() => {
+    const lookaheadDays = Math.max(1, calendarUpcomingDays);
     const near = cards.filter(
-      (card) => card.daysUntilExpiry >= -7 && card.daysUntilExpiry <= Math.max(14, warnBaldAb + 7)
+      (card) => card.daysUntilExpiry >= -7 && card.daysUntilExpiry <= lookaheadDays
     );
 
     if (near.length > 0) {
@@ -309,7 +315,7 @@ export function ExpiryCalendar({ warnBaldAb, warnAbgelaufenAb }: ExpiryCalendarP
     }
 
     return cards;
-  }, [cards, warnBaldAb]);
+  }, [cards, calendarUpcomingDays]);
 
   const visibleUpcomingCards = useMemo(() => {
     if (upcomingLimit === 'all') {

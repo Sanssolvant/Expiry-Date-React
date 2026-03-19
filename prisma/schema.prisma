@@ -124,6 +124,7 @@ model UserSettings {
   userId                   String    @unique
   warnLevelBald            Int       @default(3) // z.B. 3 Tage
   warnLevelExpired         Int       @default(0) // z.B. 0 Tage = abgelaufen
+  calendarUpcomingDays     Int       @default(14) // Tage in die Zukunft für "Nächste Fälligkeiten"
   inventoryLayoutMode      String    @default("cards") // cards | list | compact
   inventorySortMode        String    @default("manual") // manual | expiry_asc | expiry_desc
   inventoryCategories      String?   @db.Text

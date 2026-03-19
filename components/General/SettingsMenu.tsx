@@ -25,8 +25,10 @@ import { USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 type Props = {
   baldAb: number;
   abgelaufenAb: number;
+  calendarUpcomingDays: number;
   setBaldAb: (n: number) => void;
   setAbgelaufenAb: (n: number) => void;
+  setCalendarUpcomingDays: (n: number) => void;
   iconOnly?: boolean;
   renderTrigger?: (open: () => void) => ReactNode;
   hideTrigger?: boolean;
@@ -57,8 +59,10 @@ function isValidTime(value: string) {
 export function SettingsMenu({
   baldAb,
   abgelaufenAb,
+  calendarUpcomingDays,
   setBaldAb,
   setAbgelaufenAb,
+  setCalendarUpcomingDays,
   iconOnly,
   renderTrigger,
   hideTrigger,
@@ -76,6 +80,9 @@ export function SettingsMenu({
 
   const [localBald, setLocalBald] = useState<number | ''>(baldAb);
   const [localExpired, setLocalExpired] = useState<number | ''>(abgelaufenAb);
+  const [localCalendarUpcomingDays, setLocalCalendarUpcomingDays] = useState<number | ''>(
+    calendarUpcomingDays
+  );
 
   const [localReminderEnabled, setLocalReminderEnabled] = useState(false);
   const [localReminderTime, setLocalReminderTime] = useState(USER_SETTINGS_DEFAULTS.emailReminderTime);
@@ -107,6 +114,7 @@ export function SettingsMenu({
 
     setLocalBald(baldAb);
     setLocalExpired(abgelaufenAb);
+    setLocalCalendarUpcomingDays(calendarUpcomingDays);
     setLocalCategories(USER_SETTINGS_DEFAULTS.inventoryCategories);
     setLocalUnits(USER_SETTINGS_DEFAULTS.inventoryUnits);
     setNewCategory('');
@@ -133,6 +141,9 @@ export function SettingsMenu({
         }
         if (settings.warnLevelExpired != null) {
           setLocalExpired(Number(settings.warnLevelExpired));
+        }
+        if (settings.calendarUpcomingDays != null) {
+          setLocalCalendarUpcomingDays(Number(settings.calendarUpcomingDays));
         }
 
         setLocalReminderEnabled(Boolean(settings.emailRemindersEnabled));
@@ -185,7 +196,7 @@ export function SettingsMenu({
     return () => {
       cancelled = true;
     };
-  }, [isOpened, baldAb, abgelaufenAb]);
+  }, [isOpened, baldAb, abgelaufenAb, calendarUpcomingDays]);
 
   const tileBg = isDark ? alpha(theme.colors.dark[5], 0.35) : alpha(theme.colors.gray[1], 0.6);
   const tileBorder = isDark ? alpha(theme.colors.dark[2], 0.35) : theme.colors.gray[3];
@@ -215,6 +226,16 @@ export function SettingsMenu({
 
     if (localBald === '' || localExpired === '') {
       setError('Bitte beide Warnstufen-Werte eingeben.');
+      setSaving(false);
+      return;
+    }
+
+    if (
+      localCalendarUpcomingDays === '' ||
+      Number(localCalendarUpcomingDays) < 1 ||
+      Number(localCalendarUpcomingDays) > 365
+    ) {
+      setError('Bitte für das Kalender-Zeitfenster einen Wert zwischen 1 und 365 eingeben.');
       setSaving(false);
       return;
     }
@@ -253,6 +274,7 @@ export function SettingsMenu({
         body: JSON.stringify({
           warnLevelBald: Number(localBald),
           warnLevelExpired: Number(localExpired),
+          calendarUpcomingDays: Number(localCalendarUpcomingDays),
           emailRemindersEnabled: localReminderEnabled,
           emailReminderTime: localReminderTime,
           emailReminderIntervalValue: Number(localIntervalValue || 1),
@@ -270,6 +292,7 @@ export function SettingsMenu({
 
       setBaldAb(Number(localBald));
       setAbgelaufenAb(Number(localExpired));
+      setCalendarUpcomingDays(Number(localCalendarUpcomingDays));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('inventory-options-updated', {
@@ -354,6 +377,7 @@ export function SettingsMenu({
             <Text size="xs" c="dimmed" mt={4}>
               - Bald ablaufend: Ablauf in den nächsten X Tagen.{'\n'}
               - Abgelaufen: seit Y Tagen vorbei.{'\n'}
+              - Kalender-Zeitfenster: wie weit "Nächste Fälligkeiten" in die Zukunft schaut.{'\n'}
               - Erinnerung: z.B. alle 2 Wochen um 22:13 oder alle 1 Monat.
             </Text>
           </Box>
@@ -387,6 +411,16 @@ export function SettingsMenu({
               max={maxExpired}
               value={localExpired}
               onChange={(val) => setLocalExpired(val === '' ? '' : Number(val))}
+            />
+
+            <NumberInput
+              mt="sm"
+              label="Kalender-Zeitfenster in die Zukunft (Tage)"
+              description='Steuert "Nächste Fälligkeiten" im Kalender (z.B. 14 oder 25).'
+              min={1}
+              max={365}
+              value={localCalendarUpcomingDays}
+              onChange={(val) => setLocalCalendarUpcomingDays(val === '' ? '' : Number(val))}
             />
           </Box>
 

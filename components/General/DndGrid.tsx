@@ -86,16 +86,48 @@ type DndGridProps = {
 };
 
 type LayoutMode = 'cards' | 'list' | 'compact';
+type InventoryViewMode = 'flat' | 'grouped';
 type SaveSyncStatus = 'synced' | 'pending' | 'error';
-type BarcodeTemplateData = {
-  name: string;
-  kategorie: string;
-  image: string;
-  einheit: string;
-};
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values.map((x) => x.trim()).filter(Boolean)));
+}
+
+function normalizeProductName(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function compareCardsBySort(a: CardData, b: CardData, sortMode: Filters['sort']) {
+  if (sortMode === 'manual') {
+    return 0;
+  }
+
+  const aExp = parseAblauf(a.ablaufdatum);
+  const bExp = parseAblauf(b.ablaufdatum);
+  const aDateInvalid = Number.isNaN(aExp);
+  const bDateInvalid = Number.isNaN(bExp);
+
+  if (aDateInvalid && bDateInvalid) {
+    return 0;
+  }
+  if (aDateInvalid) {
+    return 1;
+  }
+  if (bDateInvalid) {
+    return -1;
+  }
+
+  if (sortMode === 'expiry_desc') {
+    return bExp - aExp;
+  }
+
+  const aP = warnPriority[a.warnLevel ?? WarnLevel.OK] ?? 99;
+  const bP = warnPriority[b.warnLevel ?? WarnLevel.OK] ?? 99;
+
+  if (aP !== bP) {
+    return aP - bP;
+  }
+  return aExp - bExp;
 }
 
 export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) {
@@ -119,6 +151,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('cards');
+  const [inventoryViewMode, setInventoryViewMode] = useState<InventoryViewMode>('flat');
   const [uiSettingsLoaded, setUiSettingsLoaded] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState<string[]>(
     USER_SETTINGS_DEFAULTS.inventoryCategories
@@ -244,7 +277,21 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     void persistInventoryOptions(categoryOptions, nextUnits);
   };
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const savedViewMode = window.localStorage.getItem('inventory-view-mode');
+    if (savedViewMode === 'flat' || savedViewMode === 'grouped') {
+      setInventoryViewMode(savedViewMode);
+    }
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    window.localStorage.setItem('inventory-view-mode', inventoryViewMode);
+  }, [inventoryViewMode, mounted]);
 
   useEffect(() => {
     let cancelled = false;
@@ -436,32 +483,57 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           mengeBisMatch
         );
       })
-      .sort((a, b) => {
-        // ✅ Manuell: Reihenfolge bleibt wie in rawCards
-        if (filters.sort === 'manual') {return 0;}
-
-        const aExp = parseAblauf(a.ablaufdatum);
-        const bExp = parseAblauf(b.ablaufdatum);
-        const aDateInvalid = Number.isNaN(aExp);
-        const bDateInvalid = Number.isNaN(bExp);
-
-        if (aDateInvalid && bDateInvalid) {return 0;}
-        if (aDateInvalid) {return 1;}
-        if (bDateInvalid) {return -1;}
-
-        // expiry_desc: Längst haltbar zuerst
-        if (filters.sort === 'expiry_desc') {return bExp - aExp;}
-
-        // expiry_asc: Abgelaufen/Bald zuerst (Warnstufe), dann früheres Datum
-        const aP = warnPriority[a.warnLevel ?? WarnLevel.OK] ?? 99;
-        const bP = warnPriority[b.warnLevel ?? WarnLevel.OK] ?? 99;
-
-        if (aP !== bP) {return aP - bP;}
-        return aExp - bExp;
-      });
+      .sort((a, b) => compareCardsBySort(a, b, filters.sort));
 
     return result;
   }, [cards, filters]);
+
+  const groupedCards = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        key: string;
+        displayName: string;
+        cards: CardData[];
+        warnLevel: WarnLevel;
+        nextExpiry: string | null;
+      }
+    >();
+
+    for (const card of filteredCards) {
+      const normalizedName = normalizeProductName(card.name);
+      const key = normalizedName || `unnamed-${card.id}`;
+      const existingGroup = grouped.get(key);
+
+      if (!existingGroup) {
+        grouped.set(key, {
+          key,
+          displayName: card.name.trim() || 'Unbenanntes Produkt',
+          cards: [card],
+          warnLevel: card.warnLevel ?? WarnLevel.OK,
+          nextExpiry: card.ablaufdatum,
+        });
+        continue;
+      }
+
+      existingGroup.cards.push(card);
+
+      const cardWarn = card.warnLevel ?? WarnLevel.OK;
+      const currentWarnPriority = warnPriority[existingGroup.warnLevel] ?? 99;
+      const cardWarnPriority = warnPriority[cardWarn] ?? 99;
+      if (cardWarnPriority < currentWarnPriority) {
+        existingGroup.warnLevel = cardWarn;
+      }
+
+      const currentExpiry = existingGroup.nextExpiry ? parseAblauf(existingGroup.nextExpiry) : Number.NaN;
+      const nextExpiry = parseAblauf(card.ablaufdatum);
+      if (Number.isNaN(currentExpiry) || (!Number.isNaN(nextExpiry) && nextExpiry < currentExpiry)) {
+        existingGroup.nextExpiry = card.ablaufdatum;
+      }
+    }
+
+    return Array.from(grouped.values());
+  }, [filteredCards]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     // DnD nur im manuellen Sortiermodus
@@ -580,6 +652,9 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     const barcodeForTemplate = pendingBarcode;
 
     const exists = rawCards.find((c) => c.id === card.id);
+    const hasSameProductName =
+      !exists &&
+      rawCards.some((c) => normalizeProductName(c.name) === normalizeProductName(cardWithoutWarn.name));
     const nextRawCards = exists
       ? rawCards.map((c) => (c.id === card.id ? cardWithoutWarn : c))
       : [...rawCards, cardWithoutWarn];
@@ -590,6 +665,59 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
     if (barcodeForTemplate) {
       void saveBarcodeTemplate(barcodeForTemplate, cardWithoutWarn);
+    }
+
+    if (hasSameProductName) {
+      notifications.show({
+        title: 'Neue Charge gespeichert',
+        message:
+          'Das Produkt wurde mit eigenem Ablaufdatum hinzugefügt und in der Gruppenansicht zusammengefasst.',
+        color: 'teal',
+        icon: <IconCheck size={18} />,
+      });
+    }
+
+    scheduleAutoSave(nextRawCards);
+  };
+
+  const handleCreateCards = async (cardsToCreate: CardData[]) => {
+    if (cardsToCreate.length === 0) {
+      return;
+    }
+
+    const normalizedCards = cardsToCreate.map(({ warnLevel, ...card }) => card);
+    const barcodeForTemplate = pendingBarcode;
+    const hasSameProductName = normalizedCards.some((card) =>
+      rawCards.some(
+        (existingCard) => normalizeProductName(existingCard.name) === normalizeProductName(card.name)
+      )
+    );
+    const nextRawCards = [...rawCards, ...normalizedCards];
+
+    setRawCards(nextRawCards);
+    setEditingCard(null);
+    setPendingBarcode(null);
+
+    if (barcodeForTemplate) {
+      void saveBarcodeTemplate(barcodeForTemplate, normalizedCards[0]);
+    }
+
+    notifications.show({
+      title: 'Chargen gespeichert',
+      message:
+        normalizedCards.length === 1
+          ? '1 Charge wurde hinzugefügt.'
+          : `${normalizedCards.length} Chargen wurden hinzugefügt.`,
+      color: 'teal',
+      icon: <IconCheck size={18} />,
+    });
+
+    if (hasSameProductName) {
+      notifications.show({
+        title: 'Gruppierung aktiv',
+        message: 'Gleiche Produktnamen werden in der Gruppenansicht automatisch zusammengefasst.',
+        color: 'blue',
+      });
     }
 
     scheduleAutoSave(nextRawCards);
@@ -687,7 +815,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         : <IconSortAscending size={18} />;
 
   const sortColor = filters.sort === 'manual' ? 'green' : 'gray';
-  const dndDisabled = filters.sort !== 'manual';
+  const dndDisabled = inventoryViewMode === 'grouped' || filters.sort !== 'manual';
   const sortableStrategy =
     layoutMode === 'list' ? verticalListSortingStrategy : rectSortingStrategy;
   const saveStatusLabel =
@@ -788,12 +916,14 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           setPendingBarcode(null);
         }}
         onCreate={handleCreateCard}
+        onCreateMany={handleCreateCards}
         unitOptions={mergedUnitOptions}
         categoryOptions={mergedCategoryOptions}
         initialData={editingCard}
         onAddUnitOption={handleAddUnitOption}
         onAddCategoryOption={handleAddCategoryOption}
         barcodeValue={pendingBarcode}
+        preferredCreateMode={inventoryViewMode === 'grouped' ? 'batch' : 'single'}
       />
 
       <InventoryStatsModal opened={statsOpen} onClose={() => setStatsOpen(false)} cards={cards} />
@@ -902,6 +1032,16 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             ]}
           />
 
+          <SegmentedControl
+            value={inventoryViewMode}
+            onChange={(value) => setInventoryViewMode(value as InventoryViewMode)}
+            size={isMobile ? 'xs' : 'sm'}
+            data={[
+              { label: 'Einzeln', value: 'flat' },
+              { label: 'Gruppiert', value: 'grouped' },
+            ]}
+          />
+
           <Group gap="xs" wrap="nowrap">
             <TextInput
               leftSection={<IconSearch size={16} />}
@@ -948,68 +1088,112 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           backgroundColor: isDark ? theme.colors.dark[4] : theme.colors.gray[1],
         }}
       >
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={filteredCards.map((c) => c.id)} strategy={sortableStrategy}>
-            {layoutMode === 'cards' ? (
-              <SimpleGrid
-                cols={{ base: 1, sm: 2, md: 4, lg: 6 }}
-                spacing={{ base: 12, sm: 16, md: 20 }}
-                verticalSpacing={{ base: 'md', sm: 'lg' }}
-              >
-                {filteredCards.map((card) => (
-                  <SortableCard
-                    key={card.id}
-                    card={card}
-                    onDelete={handleDelete}
-                    onAddToShoppingList={handleAddToShoppingList}
-                    addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
-                    onClick={handleCardClick}
-                    dndDisabled={dndDisabled}
-                  />
-                ))}
+        {inventoryViewMode === 'grouped' ? (
+          <Stack gap="md">
+            {groupedCards.map((groupedCard) => {
+              const statusBadge = warnBadge(groupedCard.warnLevel);
+              return (
+                <Paper key={groupedCard.key} withBorder p="sm" radius="md">
+                  <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
+                    <Box>
+                      <Text fw={700}>{groupedCard.displayName}</Text>
+                      <Text size="xs" c="dimmed">
+                        {groupedCard.cards.length} Chargen
+                      </Text>
+                    </Box>
+                    <Group gap="xs" wrap="wrap">
+                      <Badge color={statusBadge.color} variant="light">
+                        {statusBadge.text}
+                      </Badge>
+                      <Badge variant="outline">Nächster Ablauf: {groupedCard.nextExpiry ?? 'n/a'}</Badge>
+                    </Group>
+                  </Group>
+                  <Stack mt="sm" gap="xs">
+                    {groupedCard.cards.map((card) => (
+                      <InventoryListItem
+                        key={card.id}
+                        card={card}
+                        onDelete={handleDelete}
+                        onAddToShoppingList={handleAddToShoppingList}
+                        addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                        onClick={handleCardClick}
+                      />
+                    ))}
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={filteredCards.map((c) => c.id)} strategy={sortableStrategy}>
+              {layoutMode === 'cards' ? (
+                <SimpleGrid
+                  cols={{ base: 1, sm: 2, md: 4, lg: 6 }}
+                  spacing={{ base: 12, sm: 16, md: 20 }}
+                  verticalSpacing={{ base: 'md', sm: 'lg' }}
+                >
+                  {filteredCards.map((card) => (
+                    <SortableCard
+                      key={card.id}
+                      card={card}
+                      onDelete={handleDelete}
+                      onAddToShoppingList={handleAddToShoppingList}
+                      addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                      onClick={handleCardClick}
+                      dndDisabled={dndDisabled}
+                    />
+                  ))}
 
-                <Box
-                  style={{
-                    minHeight: 200,
-                    borderRadius: 8,
-                    border: '2px dashed #ccc',
-                    backgroundColor: isDark ? theme.colors.dark[3] : theme.colors.gray[2],
-                  }}
-                />
-              </SimpleGrid>
-            ) : layoutMode === 'list' ? (
-              <Stack gap="sm">
-                {filteredCards.map((card) => (
-                  <SortableListItem
-                    key={card.id}
-                    card={card}
-                    onDelete={handleDelete}
-                    onAddToShoppingList={handleAddToShoppingList}
-                    addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
-                    onClick={handleCardClick}
-                    dndDisabled={dndDisabled}
+                  <Box
+                    style={{
+                      minHeight: 200,
+                      borderRadius: 8,
+                      border: '2px dashed #ccc',
+                      backgroundColor: isDark ? theme.colors.dark[3] : theme.colors.gray[2],
+                    }}
                   />
-                ))}
-              </Stack>
-            ) : (
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="sm">
-                {filteredCards.map((card) => (
-                  <SortableCompactItem
-                    key={card.id}
-                    card={card}
-                    onDelete={handleDelete}
-                    onAddToShoppingList={handleAddToShoppingList}
-                    addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
-                    onClick={handleCardClick}
-                    dndDisabled={dndDisabled}
-                  />
-                ))}
-              </SimpleGrid>
-            )}
-          </SortableContext>
-        </DndContext>
+                </SimpleGrid>
+              ) : layoutMode === 'list' ? (
+                <Stack gap="sm">
+                  {filteredCards.map((card) => (
+                    <SortableListItem
+                      key={card.id}
+                      card={card}
+                      onDelete={handleDelete}
+                      onAddToShoppingList={handleAddToShoppingList}
+                      addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                      onClick={handleCardClick}
+                      dndDisabled={dndDisabled}
+                    />
+                  ))}
+                </Stack>
+              ) : (
+                <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="sm">
+                  {filteredCards.map((card) => (
+                    <SortableCompactItem
+                      key={card.id}
+                      card={card}
+                      onDelete={handleDelete}
+                      onAddToShoppingList={handleAddToShoppingList}
+                      addToShoppingListLoading={addingToShoppingListIds.includes(card.id)}
+                      onClick={handleCardClick}
+                      dndDisabled={dndDisabled}
+                    />
+                  ))}
+                </SimpleGrid>
+              )}
+            </SortableContext>
+          </DndContext>
+        )}
 
-        {layoutMode !== 'cards' && filteredCards.length === 0 && (
+        {inventoryViewMode === 'grouped' && groupedCards.length === 0 && (
+          <Text size="sm" c="dimmed">
+            Keine Produkte gefunden.
+          </Text>
+        )}
+
+        {inventoryViewMode === 'flat' && layoutMode !== 'cards' && filteredCards.length === 0 && (
           <Text size="sm" c="dimmed">
             Keine Produkte gefunden.
           </Text>

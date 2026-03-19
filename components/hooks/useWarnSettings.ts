@@ -6,6 +6,9 @@ import { USER_SETTINGS_DEFAULTS } from '@/app/lib/user-settings';
 export function useWarnSettings() {
   const [warnBaldAb, setWarnBaldAb] = useState(USER_SETTINGS_DEFAULTS.warnLevelBald);
   const [warnAbgelaufenAb, setWarnAbgelaufenAb] = useState(USER_SETTINGS_DEFAULTS.warnLevelExpired);
+  const [calendarUpcomingDays, setCalendarUpcomingDays] = useState(
+    USER_SETTINGS_DEFAULTS.calendarUpcomingDays
+  );
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -22,6 +25,9 @@ export function useWarnSettings() {
         if (settings.warnLevelExpired != null) {
           setWarnAbgelaufenAb(Number(settings.warnLevelExpired));
         }
+        if (settings.calendarUpcomingDays != null) {
+          setCalendarUpcomingDays(Number(settings.calendarUpcomingDays));
+        }
       } catch {
         // use defaults
       }
@@ -33,7 +39,9 @@ export function useWarnSettings() {
   return {
     warnBaldAb,
     warnAbgelaufenAb,
+    calendarUpcomingDays,
     setWarnBaldAb,
     setWarnAbgelaufenAb,
+    setCalendarUpcomingDays,
   };
 }

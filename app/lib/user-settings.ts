@@ -25,6 +25,7 @@ export type InventorySortMode = (typeof ALLOWED_INVENTORY_SORT_MODES)[number];
 export const USER_SETTINGS_DEFAULTS = {
   warnLevelBald: 3,
   warnLevelExpired: 0,
+  calendarUpcomingDays: 14,
   inventoryLayoutMode: 'cards' as InventoryLayoutMode,
   inventorySortMode: 'manual' as InventorySortMode,
   inventoryCategories: [...DEFAULT_INVENTORY_CATEGORIES],

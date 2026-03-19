@@ -26,8 +26,10 @@ import { SettingsMenu } from './SettingsMenu';
 type Props = {
   baldAb: number;
   abgelaufenAb: number;
+  calendarUpcomingDays: number;
   setBaldAb: (n: number) => void;
   setAbgelaufenAb: (n: number) => void;
+  setCalendarUpcomingDays: (n: number) => void;
 };
 
 const STRONG_PASSWORD_REGEX =
@@ -51,7 +53,14 @@ function getInitials(value: string) {
   return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
 }
 
-export function UserProfileMenu({ baldAb, abgelaufenAb, setBaldAb, setAbgelaufenAb }: Props) {
+export function UserProfileMenu({
+  baldAb,
+  abgelaufenAb,
+  calendarUpcomingDays,
+  setBaldAb,
+  setAbgelaufenAb,
+  setCalendarUpcomingDays,
+}: Props) {
   const { data } = authClient.useSession();
   const { canAccess: canAccessAdmin } = useAdminAccess();
   const [menuOpened, setMenuOpened] = useState(false);
@@ -353,8 +362,10 @@ export function UserProfileMenu({ baldAb, abgelaufenAb, setBaldAb, setAbgelaufen
       <SettingsMenu
         baldAb={baldAb}
         abgelaufenAb={abgelaufenAb}
+        calendarUpcomingDays={calendarUpcomingDays}
         setBaldAb={setBaldAb}
         setAbgelaufenAb={setAbgelaufenAb}
+        setCalendarUpcomingDays={setCalendarUpcomingDays}
         hideTrigger
         opened={settingsOpened}
         onOpenedChange={setSettingsOpened}

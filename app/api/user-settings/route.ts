@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const warnLevelBald = toInt(body?.warnLevelBald);
     const warnLevelExpired = toInt(body?.warnLevelExpired);
+    const calendarUpcomingDays = toInt(body?.calendarUpcomingDays);
     const emailRemindersEnabled =
       typeof body?.emailRemindersEnabled === 'boolean' ? body.emailRemindersEnabled : undefined;
 
@@ -182,6 +183,16 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    if (
+      calendarUpcomingDays !== undefined &&
+      (calendarUpcomingDays < 1 || calendarUpcomingDays > 365)
+    ) {
+      return NextResponse.json(
+        { error: 'calendarUpcomingDays muss zwischen 1 und 365 liegen.' },
+        { status: 400 }
+      );
     }
 
     if (emailReminderTime !== undefined && !isValidTime(emailReminderTime)) {
@@ -255,6 +266,9 @@ export async function POST(req: NextRequest) {
     if (warnLevelExpired !== undefined) {
       updateData.warnLevelExpired = warnLevelExpired;
     }
+    if (calendarUpcomingDays !== undefined) {
+      updateData.calendarUpcomingDays = calendarUpcomingDays;
+    }
     if (emailRemindersEnabled !== undefined) {
       updateData.emailRemindersEnabled = emailRemindersEnabled;
     }
@@ -294,6 +308,7 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       warnLevelBald: warnLevelBald ?? USER_SETTINGS_DEFAULTS.warnLevelBald,
       warnLevelExpired: warnLevelExpired ?? USER_SETTINGS_DEFAULTS.warnLevelExpired,
+      calendarUpcomingDays: calendarUpcomingDays ?? USER_SETTINGS_DEFAULTS.calendarUpcomingDays,
       emailRemindersEnabled: emailRemindersEnabled ?? USER_SETTINGS_DEFAULTS.emailRemindersEnabled,
       emailReminderTime: finalTime,
       emailReminderIntervalValue: finalIntervalValue,

@@ -9,7 +9,14 @@ import { UserProfileMenu } from './General/UserProfileMenu';
 import { useWarnSettings } from './hooks/useWarnSettings';
 
 export function NutritionPage() {
-  const { warnBaldAb, warnAbgelaufenAb, setWarnBaldAb, setWarnAbgelaufenAb } = useWarnSettings();
+  const {
+    warnBaldAb,
+    warnAbgelaufenAb,
+    calendarUpcomingDays,
+    setWarnBaldAb,
+    setWarnAbgelaufenAb,
+    setCalendarUpcomingDays,
+  } = useWarnSettings();
 
   return (
     <AppShell header={{ height: { base: 68, md: 70, lg: 80 } }} padding={{ base: 'xs', sm: 'md' }}>
@@ -83,8 +90,10 @@ export function NutritionPage() {
             <UserProfileMenu
               baldAb={warnBaldAb}
               abgelaufenAb={warnAbgelaufenAb}
+              calendarUpcomingDays={calendarUpcomingDays}
               setBaldAb={setWarnBaldAb}
               setAbgelaufenAb={setWarnAbgelaufenAb}
+              setCalendarUpcomingDays={setCalendarUpcomingDays}
             />
           </Group>
         </Group>
