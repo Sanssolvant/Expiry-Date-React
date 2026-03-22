@@ -7,6 +7,14 @@ export const runtime = 'nodejs';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
+type ParsedItem = {
+  name: string;
+  menge: number;
+  einheit: string;
+  kategorie: string;
+  ablaufdatum: string | null;
+};
+
 function todayZurichDDMMYYYY(): string {
   return new Intl.DateTimeFormat('de-CH', {
     timeZone: 'Europe/Zurich',
@@ -18,6 +26,51 @@ function todayZurichDDMMYYYY(): string {
 
 function isValidGermanDate(str: unknown): str is string {
   return typeof str === 'string' && /^\d{2}\.\d{2}\.\d{4}$/.test(str);
+}
+
+function normalizeParsedItems(
+  raw: unknown,
+  allowedUnits: string[],
+  allowedCats: string[],
+  defaultUnit: string,
+  defaultCategory: string
+): ParsedItem[] {
+  const sourceItems = Array.isArray((raw as any)?.items) ? (raw as any).items : [raw];
+
+  const normalized = sourceItems
+    .map((item: any): ParsedItem | null => {
+      const name = typeof item?.name === 'string' ? item.name.trim() : '';
+      if (!name) {
+        return null;
+      }
+
+      const rawAmount = Number(item?.menge);
+      const menge = Number.isFinite(rawAmount) && rawAmount >= 1 ? Math.round(rawAmount) : 1;
+      const einheit =
+        typeof item?.einheit === 'string' && allowedUnits.includes(item.einheit) ? item.einheit : defaultUnit;
+      const kategorie =
+        typeof item?.kategorie === 'string' && allowedCats.includes(item.kategorie)
+          ? item.kategorie
+          : defaultCategory;
+      const ablaufdatum = isValidGermanDate(item?.ablaufdatum) ? item.ablaufdatum : null;
+
+      return { name, menge, einheit, kategorie, ablaufdatum };
+    })
+    .filter((item: ParsedItem | null): item is ParsedItem => Boolean(item));
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  return [
+    {
+      name: '',
+      menge: 1,
+      einheit: defaultUnit,
+      kategorie: defaultCategory,
+      ablaufdatum: null,
+    },
+  ];
 }
 
 export async function POST(req: Request) {
@@ -64,10 +117,13 @@ export async function POST(req: Request) {
             `DATUM-REGELN:\n` +
             `- Relative Angaben (z.B. "in zwei Wochen", "morgen", "übermorgen", "nächsten Freitag") immer in fixes Datum umrechnen.\n` +
             `- ablaufdatum IMMER "DD.MM.YYYY" oder null.\n\n` +
+            `MEHRERE PRODUKTE:\n` +
+            `- Falls mehrere Produkte erwähnt sind, gib alle als eigene Einträge in "items" zurück.\n` +
+            `- Auch bei nur einem Produkt muss "items" ein Array mit einem Eintrag sein.\n\n` +
             `EINHEIT exakt aus:\n${JSON.stringify(allowedUnits)}\n\n` +
             `KATEGORIE exakt aus:\n${JSON.stringify(allowedCats)}\n\n` +
             `JSON-Format:\n` +
-            `{"name":"", "menge": 1, "einheit":${defaultUnitJson}, "kategorie":${defaultCategoryJson}, "ablaufdatum":"DD.MM.YYYY"|null}\n\n` +
+            `{"items":[{"name":"", "menge": 1, "einheit":${defaultUnitJson}, "kategorie":${defaultCategoryJson}, "ablaufdatum":"DD.MM.YYYY"|null}]}\n\n` +
             `Defaults:\n` +
             `- menge=1\n` +
             `- einheit=${defaultUnitJson} wenn unklar\n` +
@@ -78,30 +134,17 @@ export async function POST(req: Request) {
 
     const raw = resp.output_text?.trim?.() ?? '{}';
 
-    let parsed: any;
+    let parsedRaw: any;
     try {
-      parsed = JSON.parse(raw);
+      parsedRaw = JSON.parse(raw);
     } catch {
-      parsed = {
-        name: '',
-        menge: 1,
-        einheit: defaultUnit,
-        kategorie: defaultCategory,
-        ablaufdatum: null,
-      };
+      parsedRaw = { items: [] };
     }
 
-    if (!allowedUnits.includes(parsed.einheit)) {
-      parsed.einheit = defaultUnit;
-    }
-    if (!allowedCats.includes(parsed.kategorie)) {
-      parsed.kategorie = defaultCategory;
-    }
-    if (parsed.ablaufdatum != null && !isValidGermanDate(parsed.ablaufdatum)) {
-      parsed.ablaufdatum = null;
-    }
+    const items = normalizeParsedItems(parsedRaw, allowedUnits, allowedCats, defaultUnit, defaultCategory);
+    const parsed = items[0];
 
-    return Response.json({ parsed });
+    return Response.json({ parsed, items });
   } catch (err: any) {
     if (err?.status === 429) {
       return Response.json(

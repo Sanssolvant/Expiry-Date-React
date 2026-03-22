@@ -5,8 +5,10 @@ import {
   IconCheck,
   IconMicrophone,
   IconPlayerStop,
-  IconWand,
+  IconPlus,
   IconSparkles,
+  IconTrash,
+  IconWand,
 } from '@tabler/icons-react';
 import {
   alpha,
@@ -16,61 +18,79 @@ import {
   Divider,
   Group,
   Modal,
+  NumberInput,
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
   Textarea,
   ThemeIcon,
   useMantineColorScheme,
   useMantineTheme,
 } from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
+import { formatDateToDisplay, parseDateFromString } from '@/app/lib/dateUtils';
 
 type ParsedItem = {
-  name?: string;
-  menge?: number;
-  einheit?: string;
-  kategorie?: string;
-  ablaufdatum?: string | null; // "DD.MM.YYYY" | null
+  name: string;
+  menge: number;
+  einheit: string;
+  kategorie: string;
+  ablaufdatum: string | null;
+};
+
+type EditableItem = {
+  key: string;
+  name: string;
+  menge: number;
+  einheit: string;
+  kategorie: string;
+  ablaufdatum: Date | null;
+  erfasstAm: Date | null;
 };
 
 type Props = {
   opened: boolean;
   onClose: () => void;
-  onApply: (data: { text: string; parsed: ParsedItem }) => void;
+  onApply: (data: { text: string; items: ParsedItem[] }) => void;
 };
 
-function InfoTile({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  const theme = useMantineTheme();
-  const { colorScheme } = useMantineColorScheme();
-  const isDark = colorScheme === 'dark';
+function buildItemWithDefaults(source?: Partial<ParsedItem>): EditableItem {
+  let expiry: Date | null = new Date();
+  if (typeof source?.ablaufdatum === 'string' && source.ablaufdatum.trim()) {
+    try {
+      expiry = parseDateFromString(source.ablaufdatum);
+    } catch {
+      expiry = new Date();
+    }
+  }
 
-  const bg = isDark ? alpha(theme.colors.dark[5], 0.35) : alpha(theme.colors.gray[1], 0.6);
-  const border = isDark ? alpha(theme.colors.dark[2], 0.35) : theme.colors.gray[3];
+  return {
+    key: crypto.randomUUID(),
+    name: (source?.name ?? '').trim(),
+    menge: Number.isFinite(source?.menge) && Number(source?.menge) >= 1 ? Math.round(Number(source?.menge)) : 1,
+    einheit: (source?.einheit ?? 'Stk').trim() || 'Stk',
+    kategorie: (source?.kategorie ?? '').trim(),
+    ablaufdatum: expiry,
+    erfasstAm: new Date(),
+  };
+}
 
-  return (
-    <Box
-      style={{
-        borderRadius: 16,
-        border: `1px solid ${border}`,
-        background: bg,
-        padding: '10px 12px',
-      }}
-    >
-      <Text size="xs" c="dimmed">
-        {label}
-      </Text>
-      <Text fw={600} size="sm" lh={1.25} lineClamp={1}>
-        {value}
-      </Text>
-    </Box>
-  );
+function mapApiItems(rawItems: unknown): EditableItem[] {
+  if (!Array.isArray(rawItems)) {
+    return [];
+  }
+
+  return rawItems
+    .map((item: any) => {
+      const name = typeof item?.name === 'string' ? item.name.trim() : '';
+      if (!name) {
+        return null;
+      }
+      return buildItemWithDefaults(item);
+    })
+    .filter((item): item is EditableItem => Boolean(item));
 }
 
 export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
@@ -87,12 +107,23 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
   const [isParsing, setIsParsing] = useState(false);
 
   const [text, setText] = useState('');
-  const [parsed, setParsed] = useState<ParsedItem>({});
+  const [items, setItems] = useState<EditableItem[]>([]);
 
-  const canApply = useMemo(() => {
-    const nameOk = (parsed?.name ?? '').trim().length > 0;
-    return nameOk;
-  }, [parsed]);
+  const canApply = useMemo(
+    () =>
+      items.length > 0 &&
+      items.every(
+        (item) =>
+          item.name.trim().length > 0 &&
+          Number.isFinite(item.menge) &&
+          item.menge >= 1 &&
+          item.einheit.trim().length > 0 &&
+          item.kategorie.trim().length > 0 &&
+          Boolean(item.ablaufdatum) &&
+          Boolean(item.erfasstAm)
+      ),
+    [items]
+  );
 
   useEffect(() => {
     if (!opened) {
@@ -100,10 +131,40 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
       setIsTranscribing(false);
       setIsParsing(false);
       setText('');
-      setParsed({});
+      setItems([]);
       chunksRef.current = [];
     }
   }, [opened]);
+
+  const updateItem = (key: string, patch: Partial<Omit<EditableItem, 'key'>>) => {
+    setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+  };
+
+  const removeItem = (key: string) => {
+    setItems((prev) => prev.filter((item) => item.key !== key));
+  };
+
+  const addEmptyItem = () => {
+    setItems((prev) => [...prev, buildItemWithDefaults()]);
+  };
+
+  const applyParsedItems = (rawItems: unknown) => {
+    const nextItems = mapApiItems(rawItems);
+    setItems(nextItems);
+    if (nextItems.length === 0) {
+      notifications.show({
+        title: 'Keine Produkte erkannt',
+        message: 'Bitte Transkript anpassen oder erneut aufnehmen.',
+        color: 'yellow',
+      });
+      return;
+    }
+    notifications.show({
+      title: 'Fertig',
+      message: `${nextItems.length} Produkt${nextItems.length === 1 ? '' : 'e'} erkannt.`,
+      color: 'teal',
+    });
+  };
 
   const startRecording = async () => {
     try {
@@ -115,7 +176,9 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
 
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {chunksRef.current.push(e.data);}
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
       };
 
       recorder.start();
@@ -141,11 +204,12 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
       const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
       const json = await res.json();
 
-      if (!res.ok) {throw new Error(json?.error ?? 'Transkription fehlgeschlagen');}
+      if (!res.ok) {
+        throw new Error(json?.error ?? 'Transkription fehlgeschlagen');
+      }
 
       setText(json.text ?? '');
-      setParsed(json.parsed ?? {});
-      notifications.show({ title: 'Fertig', message: 'Transkription abgeschlossen', color: 'teal' });
+      applyParsedItems(json.items);
     } catch (e: any) {
       console.error(e);
       notifications.show({
@@ -161,7 +225,9 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
   const stopRecording = async () => {
     const recorder = recorderRef.current;
     const stream = streamRef.current;
-    if (!recorder || !stream) {return;}
+    if (!recorder || !stream) {
+      return;
+    }
 
     setIsRecording(false);
 
@@ -188,9 +254,11 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
       });
       const json = await res.json();
 
-      if (!res.ok) {throw new Error(json?.error ?? 'Auswertung fehlgeschlagen');}
+      if (!res.ok) {
+        throw new Error(json?.error ?? 'Auswertung fehlgeschlagen');
+      }
 
-      setParsed(json.parsed ?? {});
+      applyParsedItems(json.items);
       notifications.show({ title: 'Aktualisiert', message: 'Neu ausgewertet', color: 'teal' });
     } catch (e: any) {
       console.error(e);
@@ -204,7 +272,7 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
     }
   };
 
-  const status = isTranscribing ? 'Transkribiere…' : isRecording ? 'Aufnahme läuft…' : 'Bereit';
+  const status = isTranscribing ? 'Transkribiere...' : isRecording ? 'Aufnahme läuft...' : 'Bereit';
   const statusColor = isTranscribing ? 'blue' : isRecording ? 'orange' : 'gray';
 
   const headerBg = isDark ? alpha(theme.colors.dark[6], 0.55) : alpha(theme.white, 0.7);
@@ -239,14 +307,13 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
               Per Sprache hinzufügen
             </Text>
             <Text size="xs" c="dimmed">
-              Sprich ein Produkt ein – wir transkribieren & füllen Felder automatisch.
+              Sprich mehrere Produkte ein. Danach kannst du alle Karten vor dem Speichern anpassen.
             </Text>
           </Box>
         </Group>
       }
     >
       <Stack gap="md">
-        {/* Top action bar */}
         <Box
           style={{
             borderRadius: 18,
@@ -293,14 +360,13 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
           </Group>
         </Box>
 
-        {/* Transcript */}
         <Textarea
           label="Transkript (bearbeitbar)"
           autosize
           minRows={4}
           value={text}
           onChange={(e) => setText(e.currentTarget.value)}
-          placeholder='z.B. "5 Stück Mango, Kategorie Früchte, abgelaufen in 3 Tagen"'
+          placeholder='z.B. "2L Milch, 3 Eier mit Ablaufdatum morgen, 1 Joghurt in 5 Tagen"'
           disabled={isTranscribing || isRecording}
           styles={{
             input: { borderRadius: 16 },
@@ -309,36 +375,120 @@ export function SpeechCreateModal({ opened, onClose, onApply }: Props) {
 
         <Divider />
 
-        {/* Parsed tiles */}
         <Box>
-          <Group justify="space-between" mb="xs">
-            <Text fw={700} size="sm">
-              Erkannte Daten
-            </Text>
-            <Text size="xs" c="dimmed">
-              Du kannst das Transkript oben anpassen und „Neu auswerten“ klicken.
-            </Text>
+          <Group justify="space-between" mb="xs" wrap="wrap" gap="xs">
+            <Box>
+              <Text fw={700} size="sm">
+                Erstellte Karten
+              </Text>
+              <Text size="xs" c="dimmed">
+                {items.length
+                  ? `${items.length} Karte${items.length === 1 ? '' : 'n'} erkannt. Alle Felder sind bearbeitbar.`
+                  : 'Noch keine Produkte erkannt.'}
+              </Text>
+            </Box>
+            <Button variant="light" size="xs" leftSection={<IconPlus size={14} />} onClick={addEmptyItem}>
+              Karte hinzufügen
+            </Button>
           </Group>
 
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <InfoTile label="Name" value={(parsed?.name ?? '—') as string} />
-            <InfoTile
-              label="Menge"
-              value={`${parsed?.menge ?? '—'} ${parsed?.einheit ?? ''}`.trim()}
-            />
-            <InfoTile label="Kategorie" value={(parsed?.kategorie ?? '—') as string} />
-            <InfoTile label="Ablaufdatum" value={(parsed?.ablaufdatum ?? '—') as string} />
-          </SimpleGrid>
+          {items.length ? (
+            <Stack gap="sm">
+              {items.map((item, index) => (
+                <Box
+                  key={item.key}
+                  style={{
+                    borderRadius: 16,
+                    border: `1px solid ${headerBorder}`,
+                    background: headerBg,
+                    padding: 12,
+                  }}
+                >
+                  <Stack gap="sm">
+                    <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                      <Text fw={600} size="sm">
+                        Karte {index + 1}
+                      </Text>
+                      <Button
+                        variant="light"
+                        color="red"
+                        size="xs"
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => removeItem(item.key)}
+                      >
+                        Entfernen
+                      </Button>
+                    </Group>
+
+                    <TextInput
+                      label="Name"
+                      value={item.name}
+                      onChange={(e) => updateItem(item.key, { name: e.currentTarget.value })}
+                      required
+                    />
+
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                      <NumberInput
+                        label="Menge"
+                        min={1}
+                        allowDecimal={false}
+                        hideControls
+                        value={item.menge}
+                        onChange={(value) =>
+                          updateItem(item.key, {
+                            menge: Number.isFinite(value) && Number(value) >= 1 ? Math.round(Number(value)) : 1,
+                          })
+                        }
+                        required
+                      />
+                      <TextInput
+                        label="Einheit"
+                        value={item.einheit}
+                        onChange={(e) => updateItem(item.key, { einheit: e.currentTarget.value })}
+                        required
+                      />
+                    </SimpleGrid>
+
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                      <TextInput
+                        label="Kategorie"
+                        value={item.kategorie}
+                        onChange={(e) => updateItem(item.key, { kategorie: e.currentTarget.value })}
+                        required
+                      />
+                      <DatePickerInput
+                        label="Ablaufdatum"
+                        valueFormat="DD.MM.YYYY"
+                        value={item.ablaufdatum}
+                        onChange={(value) => updateItem(item.key, { ablaufdatum: value })}
+                        required
+                      />
+                    </SimpleGrid>
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
+          ) : null}
         </Box>
 
-        {/* Footer */}
         <Group justify="flex-end" mt="xs">
           <Button variant="default" onClick={onClose}>
-            Schließen
+            Schliessen
           </Button>
           <Button
             leftSection={<IconCheck size={16} />}
-            onClick={() => onApply({ text, parsed })}
+            onClick={() =>
+              onApply({
+                text,
+                items: items.map((item) => ({
+                  name: item.name.trim(),
+                  menge: Math.max(1, Math.round(item.menge)),
+                  einheit: item.einheit.trim() || 'Stk',
+                  kategorie: item.kategorie.trim(),
+                  ablaufdatum: item.ablaufdatum ? formatDateToDisplay(item.ablaufdatum) : null,
+                })),
+              })
+            }
             disabled={!canApply || isTranscribing || isParsing || isRecording}
           >
             Übernehmen

@@ -832,24 +832,34 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
       <SpeechCreateModal
         opened={speechOpen}
         onClose={() => setSpeechOpen(false)}
-        onApply={({ parsed }) => {
+        onApply={({ items }) => {
           setPendingBarcode(null);
-          const unit = (parsed.einheit ?? 'Stk').trim();
-          const cat = (parsed.kategorie ?? '').trim();
+          const now = formatDateToDisplay(new Date());
 
-          setEditingCard({
+          const newCards = items.map((item) => ({
             id: crypto.randomUUID(),
-            name: (parsed.name ?? '').trim(),
-            menge: Number(parsed.menge ?? 1),
-            einheit: unit || 'Stk',
-            kategorie: cat,
-            ablaufdatum: parsed.ablaufdatum ?? formatDateToDisplay(new Date()),
-            erfasstAm: formatDateToDisplay(new Date()),
+            name: item.name.trim(),
+            menge: Math.max(1, Math.round(Number(item.menge ?? 1))),
+            einheit: (item.einheit ?? 'Stk').trim() || 'Stk',
+            kategorie: (item.kategorie ?? '').trim(),
+            ablaufdatum: item.ablaufdatum ?? now,
+            erfasstAm: now,
             image: '',
-          });
+          }));
 
+          const nextRaw = [...rawCards, ...newCards];
+          setRawCards(nextRaw);
           setSpeechOpen(false);
-          setModalOpen(true);
+          notifications.show({
+            title: 'Produkte hinzugefügt',
+            message:
+              newCards.length === 1
+                ? '1 Produkt wurde aus Sprache gespeichert.'
+                : `${newCards.length} Produkte wurden aus Sprache gespeichert.`,
+            color: 'teal',
+            icon: <IconCheck size={18} />,
+          });
+          scheduleAutoSave(nextRaw);
         }}
       />
 
