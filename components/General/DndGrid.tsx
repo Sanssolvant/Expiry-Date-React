@@ -33,6 +33,7 @@ import {
 import { motion } from 'framer-motion';
 import {
   ActionIcon,
+  alpha,
   Badge,
   Box,
   Button,
@@ -418,7 +419,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         lastAutoSaveSnapshotRef.current = JSON.stringify(cardsFromDB);
         setSaveSyncStatus('synced');
       } catch (err) {
-        console.error('❌ Fehler beim Kartenladen:', err);
+        console.error('Fehler beim Kartenladen:', err);
       }
     };
 
@@ -795,9 +796,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
     }
   };
 
-  if (!mounted) {return null;}
-
-  // ✅ 3-Stage Icon + Tooltip
+  // 3-Stage Icon + Tooltip
   const sortModeLabel =
     filters.sort === 'manual'
       ? 'Manuell (frei verschieben)'
@@ -805,7 +804,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         ? 'Bald/abgelaufen zuerst'
         : 'Längst haltbar zuerst';
 
-  const sortTooltip = `Modus: ${sortModeLabel} — klicken zum Wechseln`;
+  const sortTooltip = `Modus: ${sortModeLabel} - klicken zum Wechseln`;
 
   const sortIcon =
     filters.sort === 'manual'
@@ -826,6 +825,42 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
         : 'Nicht synchronisiert';
   const saveStatusColor =
     saveSyncStatus === 'synced' ? 'teal' : saveSyncStatus === 'pending' ? 'blue' : 'red';
+  const inventoryCount = filteredCards.length;
+  const totalUnits = filteredCards.reduce((sum, card) => sum + (Number.isFinite(card.menge) ? card.menge : 0), 0);
+  const expiringSoonCount = filteredCards.filter((card) => card.warnLevel === WarnLevel.BALD).length;
+  const expiredCount = filteredCards.filter((card) => card.warnLevel === WarnLevel.ABGELAUFEN).length;
+  const activeFilterCount =
+    Number(Boolean(filters.name.trim())) +
+    Number(Boolean(filters.kategorie)) +
+    Number(Boolean(filters.einheit)) +
+    Number(Boolean(filters.warnLevel)) +
+    Number(filters.ablaufVon != null) +
+    Number(filters.ablaufBis != null) +
+    Number(filters.mengeVon != null) +
+    Number(filters.mengeBis != null);
+
+  const surfaceBorder = isDark ? alpha(theme.colors.dark[2], 0.8) : theme.colors.gray[3];
+  const surfaceBg = isDark ? alpha(theme.colors.dark[6], 0.72) : alpha(theme.white, 0.94);
+  const elevatedBg = isDark ? alpha(theme.colors.dark[5], 0.68) : alpha(theme.white, 0.86);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('dashboard-stats-updated', {
+        detail: {
+          inventoryCount,
+          totalUnits,
+          expiringSoonCount,
+          expiredCount,
+        },
+      })
+    );
+  }, [mounted, inventoryCount, totalUnits, expiringSoonCount, expiredCount]);
+
+  if (!mounted) {return null;}
 
   return (
     <Stack>
@@ -938,130 +973,108 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
       <InventoryStatsModal opened={statsOpen} onClose={() => setStatsOpen(false)} cards={cards} />
 
-      {/* Toolbar */}
-      <Box
-        mt="md"
+      <Paper
+        mt="xs"
+        p={{ base: 'xs', sm: 'sm' }}
+        radius="xl"
+        withBorder
         style={{
           position: 'sticky',
-          top: 'calc(var(--app-shell-header-offset, 60px) + 8px)',
-          zIndex: 30,
-          overflowX: isMobile ? 'auto' : 'visible',
-          WebkitOverflowScrolling: 'touch',
-          backgroundColor: isDark ? 'rgba(37, 38, 43, 0.92)' : 'rgba(255, 255, 255, 0.92)',
-          border: `1px solid ${isDark ? theme.colors.dark[3] : theme.colors.gray[3]}`,
-          borderRadius: 10,
-          padding: 8,
-          backdropFilter: 'blur(6px)',
-          paddingBottom: 2,
+          top: 'calc(var(--app-shell-header-offset, 96px) + 8px)',
+          zIndex: 25,
+          borderColor: surfaceBorder,
+          background: elevatedBg,
+          backdropFilter: 'blur(12px)',
         }}
       >
-        <Group
-          justify="center"
-          wrap="nowrap"
-          gap="xs"
-          style={{
-            flexWrap: 'nowrap',
-            minWidth: isMobile ? 'max-content' : 'auto',
-          }}
-        >
-          <Button variant="outline" onClick={() => setSpeechOpen(true)}>
-            {isMobile ? (
-              <IconMicrophone size={18} />
-            ) : (
-              <>
-                <IconMicrophone size={18} style={{ marginRight: 10 }} /> Per Sprache
-              </>
-            )}
-          </Button>
+        <Stack gap="xs">
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Group gap="xs" wrap="wrap">
+              <Tooltip label="Per Sprache">
+                <ActionIcon
+                  variant="light"
+                  radius="xl"
+                  size="lg"
+                  aria-label="Per Sprache"
+                  onClick={() => setSpeechOpen(true)}
+                >
+                  <IconMicrophone size={18} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Per Bild">
+                <ActionIcon
+                  variant="light"
+                  radius="xl"
+                  size="lg"
+                  aria-label="Per Bild"
+                  onClick={() => setPhotoOpen(true)}
+                >
+                  <IconCamera size={18} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Per Barcode">
+                <ActionIcon
+                  variant="light"
+                  radius="xl"
+                  size="lg"
+                  aria-label="Per Barcode"
+                  onClick={() => setBarcodeOpen(true)}
+                >
+                  <IconBarcode size={18} />
+                </ActionIcon>
+              </Tooltip>
+              <Button
+                onClick={() => {
+                  setPendingBarcode(null);
+                  setModalOpen(true);
+                }}
+                leftSection={isMobile ? undefined : <IconPlus size={16} />}
+              >
+                {isMobile ? <IconPlus size={18} /> : 'Karte hinzufügen'}
+              </Button>
+              <Button
+                onClick={handleSave}
+                color="green"
+                variant="outline"
+                loading={loading}
+                leftSection={isMobile ? undefined : <IconDeviceFloppy size={16} />}
+              >
+                {isMobile ? <IconDeviceFloppy size={18} /> : 'Alle speichern'}
+              </Button>
+            </Group>
 
-          <Button variant="outline" onClick={() => setPhotoOpen(true)}>
-            {isMobile ? (
-              <IconCamera size={18} />
-            ) : (
-              <>
-                <IconCamera size={18} style={{ marginRight: 10 }} /> Per Bild
-              </>
-            )}
-          </Button>
+            <Group gap="xs" wrap="wrap">
+              <Badge color={saveStatusColor} variant="filled" radius="sm">
+                {saveStatusLabel}
+              </Badge>
+              {activeFilterCount > 0 ? (
+                <Badge variant="outline" radius="sm">
+                  {activeFilterCount} Filter aktiv
+                </Badge>
+              ) : null}
+              <ColorSchemeToggle />
+            </Group>
+          </Group>
 
-          <Button variant="outline" onClick={() => setBarcodeOpen(true)}>
-            {isMobile ? (
-              <IconBarcode size={18} />
-            ) : (
-              <>
-                <IconBarcode size={18} style={{ marginRight: 10 }} /> Per Barcode
-              </>
-            )}
-          </Button>
+          <Group gap="xs" wrap="wrap" align="flex-end">
+            <Box style={{ flex: '1 1 260px', minWidth: isMobile ? '100%' : 260 }}>
+              <TextInput
+                leftSection={<IconSearch size={16} />}
+                placeholder="Name suchen..."
+                value={filters.name || ''}
+                onChange={(e) => {
+                  const val = e?.currentTarget?.value ?? '';
+                  setFilters((prev) => ({ ...prev, name: val }));
+                }}
+              />
+            </Box>
 
-          <Button
-            onClick={() => {
-              setPendingBarcode(null);
-              setModalOpen(true);
-            }}
-          >
-            {isMobile ? (
-              <IconPlus size={18} />
-            ) : (
-              <>
-                <IconPlus size={18} style={{ marginRight: 10 }} /> Karte hinzufügen
-              </>
-            )}
-          </Button>
-
-          <Button onClick={handleSave} color="green" variant="outline" loading={loading}>
-            {isMobile ? (
-              <IconDeviceFloppy size={18} />
-            ) : (
-              <>
-                <IconDeviceFloppy size={18} style={{ marginRight: 10 }} /> Alle speichern
-              </>
-            )}
-          </Button>
-
-          <Badge color={saveStatusColor} variant={isDark ? 'filled' : 'light'} radius="sm">
-            {saveStatusLabel}
-          </Badge>
-
-          <CardFilterMenu
-            iconOnly={isMobile}
-            filters={filters}
-            setFilters={setFilters}
-            categories={mergedCategoryOptions}
-            units={mergedUnitOptions}
-          />
-
-          <SegmentedControl
-            value={layoutMode}
-            onChange={(value) => setLayoutMode(value as LayoutMode)}
-            size={isMobile ? 'xs' : 'sm'}
-            data={[
-              { label: 'Karten', value: 'cards' },
-              { label: 'Liste', value: 'list' },
-              { label: 'Kompakt', value: 'compact' },
-            ]}
-          />
-
-          <SegmentedControl
-            value={inventoryViewMode}
-            onChange={(value) => setInventoryViewMode(value as InventoryViewMode)}
-            size={isMobile ? 'xs' : 'sm'}
-            data={[
-              { label: 'Einzeln', value: 'flat' },
-              { label: 'Gruppiert', value: 'grouped' },
-            ]}
-          />
-
-          <Group gap="xs" wrap="nowrap">
-            <TextInput
-              leftSection={<IconSearch size={16} />}
-              placeholder="Name suchen..."
-              value={filters.name || ''}
-              onChange={(e) => {
-                const val = e?.currentTarget?.value ?? '';
-                setFilters((prev) => ({ ...prev, name: val }));
-              }}
-              style={{ width: isMobile ? 160 : 300 }}
+            <CardFilterMenu
+              iconOnly={isMobile}
+              filters={filters}
+              setFilters={setFilters}
+              categories={mergedCategoryOptions}
+              units={mergedUnitOptions}
             />
 
             <Tooltip label={sortTooltip}>
@@ -1085,17 +1098,43 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
               </ActionIcon>
             </Tooltip>
 
-            <ColorSchemeToggle />
-          </Group>
-        </Group>
-      </Box>
+            <Box style={{ flex: '1 1 210px', minWidth: isMobile ? '100%' : 210 }}>
+              <SegmentedControl
+                value={layoutMode}
+                onChange={(value) => setLayoutMode(value as LayoutMode)}
+                size={isMobile ? 'xs' : 'sm'}
+                fullWidth
+                data={[
+                  { label: 'Karten', value: 'cards' },
+                  { label: 'Liste', value: 'list' },
+                  { label: 'Kompakt', value: 'compact' },
+                ]}
+              />
+            </Box>
 
-      {/* Layout */}
-      <Box
+            <Box style={{ flex: '1 1 180px', minWidth: isMobile ? '100%' : 180 }}>
+              <SegmentedControl
+                value={inventoryViewMode}
+                onChange={(value) => setInventoryViewMode(value as InventoryViewMode)}
+                size={isMobile ? 'xs' : 'sm'}
+                fullWidth
+                data={[
+                  { label: 'Einzeln', value: 'flat' },
+                  { label: 'Gruppiert', value: 'grouped' },
+                ]}
+              />
+            </Box>
+          </Group>
+        </Stack>
+      </Paper>
+
+      <Paper
         p={{ base: 'xs', sm: 'md' }}
+        radius="xl"
+        withBorder
         style={{
-          borderRadius: 8,
-          backgroundColor: isDark ? theme.colors.dark[4] : theme.colors.gray[1],
+          borderColor: surfaceBorder,
+          background: surfaceBg,
         }}
       >
         {inventoryViewMode === 'grouped' ? (
@@ -1103,7 +1142,16 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             {groupedCards.map((groupedCard) => {
               const statusBadge = warnBadge(groupedCard.warnLevel);
               return (
-                <Paper key={groupedCard.key} withBorder p="sm" radius="md">
+                <Paper
+                  key={groupedCard.key}
+                  withBorder
+                  p={{ base: 'sm', sm: 'md' }}
+                  radius="lg"
+                  style={{
+                    borderColor: alpha(theme.colors[statusBadge.color][7], isDark ? 0.45 : 0.22),
+                    background: isDark ? alpha(theme.colors.dark[7], 0.7) : alpha(theme.white, 0.95),
+                  }}
+                >
                   <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
                     <Box>
                       <Text fw={700}>{groupedCard.displayName}</Text>
@@ -1112,7 +1160,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
                       </Text>
                     </Box>
                     <Group gap="xs" wrap="wrap">
-                      <Badge color={statusBadge.color} variant="light">
+                      <Badge color={statusBadge.color} variant="filled">
                         {statusBadge.text}
                       </Badge>
                       <Badge variant="outline">Nächster Ablauf: {groupedCard.nextExpiry ?? 'n/a'}</Badge>
@@ -1139,7 +1187,7 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
             <SortableContext items={filteredCards.map((c) => c.id)} strategy={sortableStrategy}>
               {layoutMode === 'cards' ? (
                 <SimpleGrid
-                  cols={{ base: 1, sm: 2, md: 4, lg: 6 }}
+                  cols={{ base: 1, sm: 2, md: 3, lg: 5 }}
                   spacing={{ base: 12, sm: 16, md: 20 }}
                   verticalSpacing={{ base: 'md', sm: 'lg' }}
                 >
@@ -1157,10 +1205,12 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
 
                   <Box
                     style={{
-                      minHeight: 200,
-                      borderRadius: 8,
-                      border: '2px dashed #ccc',
-                      backgroundColor: isDark ? theme.colors.dark[3] : theme.colors.gray[2],
+                      minHeight: 220,
+                      borderRadius: 18,
+                      border: `1px dashed ${alpha(theme.colors.dark[1], isDark ? 0.8 : 0.45)}`,
+                      background: isDark
+                        ? alpha(theme.colors.dark[8], 0.36)
+                        : alpha(theme.colors.gray[1], 0.8),
                     }}
                   />
                 </SimpleGrid>
@@ -1197,18 +1247,22 @@ export default function DndGrid({ warnBaldAb, warnAbgelaufenAb }: DndGridProps) 
           </DndContext>
         )}
 
-        {inventoryViewMode === 'grouped' && groupedCards.length === 0 && (
-          <Text size="sm" c="dimmed">
-            Keine Produkte gefunden.
-          </Text>
+        {inventoryCount === 0 && (
+          <Center
+            mt="md"
+            p="md"
+            style={{
+              borderRadius: 14,
+              border: `1px dashed ${surfaceBorder}`,
+              background: isDark ? alpha(theme.colors.dark[8], 0.55) : alpha(theme.white, 0.75),
+            }}
+          >
+            <Text size="sm" c="dimmed">
+              Keine Produkte gefunden.
+            </Text>
+          </Center>
         )}
-
-        {inventoryViewMode === 'flat' && layoutMode !== 'cards' && filteredCards.length === 0 && (
-          <Text size="sm" c="dimmed">
-            Keine Produkte gefunden.
-          </Text>
-        )}
-      </Box>
+      </Paper>
     </Stack>
   );
 }
@@ -1385,17 +1439,28 @@ function InventoryListItem({
   const b = warnBadge(card.warnLevel ?? WarnLevel.OK);
 
   return (
-    <Paper withBorder p="sm" radius="md" onClick={() => onClick(card)} style={{ cursor: 'pointer' }}>
+    <Paper
+      withBorder
+      p="sm"
+      radius="lg"
+      onClick={() => onClick(card)}
+      style={{
+        cursor: 'pointer',
+        borderColor: alpha(theme.colors[b.color][7], isDark ? 0.35 : 0.2),
+        background: isDark ? alpha(theme.colors.dark[7], 0.82) : alpha(theme.white, 0.95),
+      }}
+    >
       <Group align="flex-start" gap="sm" wrap="nowrap">
         {card.image && card.image.trim() !== '' ? (
-          <Image src={card.image} alt={card.name} h={72} w={72} radius="sm" fit="cover" />
+          <Image src={card.image} alt={card.name} h={78} w={78} radius="md" fit="cover" />
         ) : (
           <Center
-            h={72}
-            w={72}
+            h={78}
+            w={78}
             style={{
-              borderRadius: 8,
-              backgroundColor: isDark ? theme.colors.dark[6] : theme.colors.gray[1],
+              borderRadius: 12,
+              border: `1px dashed ${alpha(theme.colors.dark[1], isDark ? 0.6 : 0.3)}`,
+              backgroundColor: isDark ? alpha(theme.colors.dark[6], 0.75) : alpha(theme.colors.gray[0], 0.9),
             }}
           >
             <Text size="xs" c="dimmed">
@@ -1409,16 +1474,18 @@ function InventoryListItem({
             <Text fw={600} style={{ wordBreak: 'break-word' }}>
               {card.name}
             </Text>
-            <Badge color={b.color} variant="light">
+            <Badge color={b.color} variant="filled">
               {b.text}
             </Badge>
           </Group>
 
           <Group gap="xs" wrap="wrap">
-            <Badge variant="outline">
+            <Badge variant="dot">
               {card.menge} {card.einheit}
             </Badge>
-            <Badge variant="outline">{card.kategorie || 'Ohne Kategorie'}</Badge>
+            <Badge variant="outline" color="gray">
+              {card.kategorie || 'Ohne Kategorie'}
+            </Badge>
           </Group>
 
           <Text size="sm" c="dimmed" style={{ wordBreak: 'break-word' }}>
@@ -1427,7 +1494,7 @@ function InventoryListItem({
 
           <Group gap="xs" wrap="wrap">
             <Button
-              variant="light"
+              variant="subtle"
               size="xs"
               loading={addToShoppingListLoading}
               onPointerDown={(e) => e.stopPropagation()}
@@ -1439,7 +1506,7 @@ function InventoryListItem({
               Auf Liste
             </Button>
             <Button
-              variant="outline"
+              variant="light"
               color="red"
               size="xs"
               onPointerDown={(e) => e.stopPropagation()}
@@ -1464,10 +1531,23 @@ function InventoryCompactItem({
   addToShoppingListLoading,
   onClick,
 }: InventoryItemProps) {
+  const { colorScheme } = useMantineColorScheme();
+  const theme = useMantineTheme();
+  const isDark = colorScheme === 'dark';
   const b = warnBadge(card.warnLevel ?? WarnLevel.OK);
 
   return (
-    <Card withBorder radius="md" p="sm" onClick={() => onClick(card)} style={{ cursor: 'pointer' }}>
+    <Card
+      withBorder
+      radius="lg"
+      p="sm"
+      onClick={() => onClick(card)}
+      style={{
+        cursor: 'pointer',
+        borderColor: alpha(theme.colors[b.color][7], isDark ? 0.32 : 0.22),
+        background: isDark ? alpha(theme.colors.dark[7], 0.75) : alpha(theme.white, 0.94),
+      }}
+    >
       <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Text fw={600} size="sm" style={{ wordBreak: 'break-word' }}>
@@ -1478,14 +1558,14 @@ function InventoryCompactItem({
           </Text>
           <Text size="xs">Ablauf: {card.ablaufdatum}</Text>
         </Stack>
-        <Badge color={b.color} variant="light">
+        <Badge color={b.color} variant="filled">
           {b.text}
         </Badge>
       </Group>
 
       <Group gap="xs" wrap="wrap" mt="sm">
         <Button
-          variant="light"
+          variant="subtle"
           size="xs"
           loading={addToShoppingListLoading}
           onPointerDown={(e) => e.stopPropagation()}
@@ -1497,7 +1577,7 @@ function InventoryCompactItem({
           Auf Liste
         </Button>
         <Button
-          variant="outline"
+          variant="light"
           color="red"
           size="xs"
           onPointerDown={(e) => e.stopPropagation()}

@@ -54,6 +54,7 @@ export function GridItem({
   const theme = useMantineTheme();
   const b = warnBadge(warnLevel);
   const isDark = colorScheme === 'dark';
+  const hasImage = image && image.trim() !== '';
 
   const tileBg = isDark
     ? alpha(theme.colors.dark[5], 0.35)
@@ -85,7 +86,7 @@ export function GridItem({
     >
       {/* Image */}
       <Box pos="relative" h={130} style={{ overflow: 'hidden' }}>
-        {image && image.trim() !== '' ? (
+        {hasImage ? (
           <Image
             src={image}
             alt={name}
@@ -95,20 +96,35 @@ export function GridItem({
             style={{ overflow: 'hidden' }}
           />
         ) : (
-          <Center h={130} bg={isDark ? theme.colors.dark[6] : theme.colors.gray[1]}>
-            <IconPhoto size={40} color={isDark ? theme.colors.dark[1] : theme.colors.gray[5]} />
+          <Center
+            h={130}
+            style={{
+              borderBottom: `1px solid ${tileBorder}`,
+              background: isDark
+                ? `linear-gradient(135deg, ${alpha(theme.colors.dark[7], 0.85)} 0%, ${alpha(theme.colors.dark[5], 0.72)} 100%)`
+                : `linear-gradient(135deg, ${alpha(theme.white, 0.96)} 0%, ${alpha(theme.colors.gray[1], 0.82)} 100%)`,
+            }}
+          >
+            <Stack align="center" gap={4}>
+              <IconPhoto size={34} color={isDark ? theme.colors.dark[1] : theme.colors.gray[5]} />
+              <Text size="xs" c="dimmed">
+                Kein Bild
+              </Text>
+            </Stack>
           </Center>
         )}
 
-        {/* gradient overlay */}
-        <Box
-          pos="absolute"
-          inset={0}
-          style={{
-            background:
-              'linear-gradient(to top, rgba(0,0,0,0.60), rgba(0,0,0,0.10), rgba(0,0,0,0))',
-          }}
-        />
+        {hasImage ? (
+          <Box
+            pos="absolute"
+            inset={0}
+            style={{
+              background: isDark
+                ? 'linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.12), rgba(0,0,0,0))'
+                : 'linear-gradient(to top, rgba(15,23,42,0.38), rgba(15,23,42,0.08), rgba(15,23,42,0))',
+            }}
+          />
+        ) : null}
 
         {/* status badge */}
         <Box pos="absolute" top={12} right={12}>
@@ -154,8 +170,16 @@ export function GridItem({
               <Text size="xs" c="dimmed">
                 Kategorie
               </Text>
-              <Text fw={500} style={{ wordBreak: 'break-word' }}>
-                {kategorie}
+              <Text
+                fw={500}
+                title={kategorie || 'Ohne Kategorie'}
+                style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {kategorie || 'Ohne Kategorie'}
               </Text>
             </Box>
           </Group>
