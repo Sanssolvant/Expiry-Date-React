@@ -396,7 +396,7 @@ export function UserProfileMenu({
               onChange={(event) => setEmailConfirmPassword(event.currentTarget.value)}
             />
             <Group justify="flex-end">
-              <Button variant="light" onClick={handleChangeEmail} loading={emailLoading}>
+              <Button onClick={handleChangeEmail} loading={emailLoading}>
                 E-Mail ändern
               </Button>
             </Group>

@@ -367,25 +367,6 @@ export function SettingsMenu({
             style={{
               borderRadius: 16,
               border: `1px solid ${tileBorder}`,
-              background: headerBg,
-              padding: 12,
-            }}
-          >
-            <Text size="sm" fw={600}>
-              Hinweise
-            </Text>
-            <Text size="xs" c="dimmed" mt={4}>
-              - Bald ablaufend: Ablauf in den nächsten X Tagen.{'\n'}
-              - Abgelaufen: seit Y Tagen vorbei.{'\n'}
-              - Kalender-Zeitfenster: wie weit "Nächste Fälligkeiten" in die Zukunft schaut.{'\n'}
-              - Erinnerung: z.B. alle 2 Wochen um 22:13 oder alle 1 Monat.
-            </Text>
-          </Box>
-
-          <Box
-            style={{
-              borderRadius: 16,
-              border: `1px solid ${tileBorder}`,
               background: tileBg,
               padding: 12,
             }}
